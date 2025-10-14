@@ -421,7 +421,7 @@ export default function Home() {
                     Businesses Ready to Invest in Growth
                   </h3>
                   <p className="text-slate-300">
-                    You understand that the right software is an investment, not an expense. You're
+                    You understand that the right software is an investment, not an expense. You&apos;re
                     committed to improving your operations.
                   </p>
                 </div>
