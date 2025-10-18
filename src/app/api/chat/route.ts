@@ -10,7 +10,6 @@ import {
   updateConversationLead
 } from '@/lib/db-operations';
 import type { LeadData, CalendarEvent } from '@/lib/types';
-import type { CoreMessage } from 'ai';
 
 export const runtime = 'edge';
 export const dynamic = 'force-dynamic';
@@ -82,10 +81,6 @@ async function checkAvailability(args: {
 
   const availabilityResult = await getEventsByUserAndDate(JORGE_USER_ID, args.date);
   const events = (availabilityResult.data || []) as Array<{ start_time?: string | null; end_time?: string | null }>;
-
-  const dateObj = new Date(args.date);
-  const dayOfWeek = dateObj.getDay();
-  const isWeekend = dayOfWeek === 0 || dayOfWeek === 6;
 
   // Calendar hours: 7 AM to 10 PM (22:00) every day
   const workStart = 7;
@@ -366,7 +361,7 @@ export async function POST(req: Request) {
                   await updateConversationLead(conversationId, result.lead_id);
                   console.log('🔗 Linked lead to conversation');
                 }
-              } catch (e) {
+              } catch {
                 // Not JSON, ignore
               }
             }

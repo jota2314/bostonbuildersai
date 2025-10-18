@@ -34,8 +34,8 @@ export default function ChatWidget() {
     }
     // If content has parts, extract text parts
     return message.parts
-      ?.filter((part: any) => part.type === 'text')
-      .map((part: any) => part.text)
+      ?.filter((part: { type?: string }) => part.type === 'text')
+      .map((part: { text?: string }) => part.text)
       .join('') || '';
   };
 
@@ -70,7 +70,7 @@ export default function ChatWidget() {
             {messages.length === 0 && (
               <div className="flex justify-start">
                 <div className="max-w-[80%] rounded-lg p-3 bg-slate-700 text-slate-100">
-                  Hey! I help contractors book calls with Jorge. What's your name?
+                  Hey! I help contractors book calls with Jorge. What&apos;s your name?
                 </div>
               </div>
             )}

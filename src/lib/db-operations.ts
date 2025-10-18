@@ -1,5 +1,5 @@
 import { getServerSupabase } from './supabase-server';
-import type { LeadData, CalendarEvent, Todo, ChatConversation, ChatMessage, ApiResponse } from './types';
+import type { LeadData, CalendarEvent, Todo, ChatMessage, ApiResponse } from './types';
 
 const supabase = getServerSupabase();
 

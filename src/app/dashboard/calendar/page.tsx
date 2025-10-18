@@ -341,7 +341,7 @@ export default function CalendarPage() {
   };
 
   // Calendar hours: 7 AM to 10 PM (22:00) every day
-  const getTimeSlotsForDate = (date: Date) => {
+  const getTimeSlotsForDate = () => {
     const startHour = 7;
     const endHour = 22;
     const hours = endHour - startHour;
@@ -658,7 +658,7 @@ export default function CalendarPage() {
                   );
                 })}
 
-                {(view === 'week' ? Array.from({ length: 24 - 5 }, (_, i) => 5 + i) : getTimeSlotsForDate(currentDate)).map((hour) => (
+                {(view === 'week' ? Array.from({ length: 24 - 5 }, (_, i) => 5 + i) : getTimeSlotsForDate()).map((hour) => (
                   <div key={hour} className="grid grid-cols-8 border-b border-slate-700">
                     <div className="w-16 text-right pr-2 text-xs text-slate-500 py-2">
                       {hour === 0 ? '12 AM' : hour === 12 ? '12 PM' : hour > 12 ? `${hour - 12} PM` : `${hour} AM`}
