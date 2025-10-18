@@ -4,7 +4,7 @@ import type { LeadData, CalendarEvent, Todo, ChatMessage, ApiResponse } from './
 const supabase = getServerSupabase();
 
 // Lead operations
-export async function createLead(leadData: LeadData): Promise<ApiResponse> {
+export async function createLead(leadData: LeadData): Promise<ApiResponse<{ id: string }>> {
   try {
     const { data, error } = await supabase
       .from('leads')
@@ -25,7 +25,7 @@ export async function createLead(leadData: LeadData): Promise<ApiResponse> {
 }
 
 // Calendar event operations
-export async function createCalendarEvent(eventData: CalendarEvent): Promise<ApiResponse> {
+export async function createCalendarEvent(eventData: CalendarEvent): Promise<ApiResponse<{ id: string }>> {
   try {
     const { data, error } = await supabase
       .from('calendar_events')
@@ -104,7 +104,7 @@ export async function getUserById(userId: string): Promise<ApiResponse> {
 }
 
 // Chat conversation operations
-export async function createOrGetConversation(sessionId: string): Promise<ApiResponse> {
+export async function createOrGetConversation(sessionId: string): Promise<ApiResponse<{ id: string }>> {
   try {
     // Try to get existing conversation
     const { data: existing, error: fetchError } = await supabase
