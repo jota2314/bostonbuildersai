@@ -310,7 +310,6 @@ export async function POST(req: Request) {
       system: systemPrompt,
       tools,
       temperature: 0.8,
-      maxSteps: 3, // Allow up to 3 tool executions in this phase
     });
 
     console.log('📊 Tool result steps:', toolResult.steps.length);
