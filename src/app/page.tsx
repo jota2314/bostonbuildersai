@@ -18,7 +18,13 @@ import {
   Mail,
   Phone,
   MapPin,
+  Video,
+  Megaphone,
+  GraduationCap,
+  Search,
 } from 'lucide-react';
+import ChatWidget from '@/components/ChatWidget';
+import LeadForm from '@/components/LeadForm';
 
 interface FAQItemProps {
   question: string;
@@ -51,12 +57,14 @@ const FAQItem = ({ question, answer }: FAQItemProps) => {
 };
 
 export default function Home() {
+  const [showLeadForm, setShowLeadForm] = useState(false);
+
   return (
     <div className="min-h-screen bg-slate-900">
       {/* Navigation */}
       <nav className="fixed top-0 w-full bg-slate-900/95 backdrop-blur-sm border-b border-slate-800 z-50">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex items-center justify-between h-28">
+          <div className="flex items-center justify-between h-36">
             <div className="flex items-center space-x-5">
               <Image
                 src="/logo.png"
@@ -65,20 +73,21 @@ export default function Home() {
                 height={80}
                 className="object-contain"
               />
-              <span className="text-3xl font-bold text-white">Boston Builders AI</span>
             </div>
-            <a
-              href="#pricing"
-              className="px-10 py-4 bg-primary hover:bg-primary-dark text-white font-bold rounded-lg transition-colors text-xl"
-            >
-              Apply Now
-            </a>
+            <div className="flex items-center space-x-4">
+              <button
+                onClick={() => setShowLeadForm(true)}
+                className="px-10 py-4 bg-primary hover:bg-primary-dark text-white font-bold rounded-lg transition-colors text-xl"
+              >
+                Apply Now
+              </button>
+            </div>
           </div>
         </div>
       </nav>
 
       {/* Hero Section */}
-      <section className="pt-32 pb-20 px-4 sm:px-6 lg:px-8 relative overflow-hidden">
+      <section className="pt-48 pb-20 px-4 sm:px-6 lg:px-8 relative overflow-hidden">
         <div className="absolute inset-0 bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 opacity-50"></div>
         <div className="max-w-7xl mx-auto relative z-10">
           <div className="text-center max-w-4xl mx-auto">
@@ -120,13 +129,13 @@ export default function Home() {
             </div>
 
             <div className="flex flex-col sm:flex-row items-center justify-center space-y-4 sm:space-y-0 sm:space-x-4">
-              <a
-                href="#pricing"
+              <button
+                onClick={() => setShowLeadForm(true)}
                 className="px-8 py-4 bg-primary hover:bg-primary-dark text-white font-bold rounded-lg transition-colors flex items-center space-x-2 text-lg"
               >
-                <span>Get Started - $2,000/mo</span>
+                <span>Get Started</span>
                 <ArrowRight className="w-5 h-5" />
-              </a>
+              </button>
               <a
                 href="#video"
                 className="px-8 py-4 bg-slate-800 hover:bg-slate-700 text-white font-semibold rounded-lg transition-colors border border-slate-700"
@@ -175,14 +184,8 @@ export default function Home() {
               Watch how Boston Builders AI transforms your workflow
             </p>
           </div>
-          <div className="aspect-video bg-slate-900 rounded-xl overflow-hidden border border-slate-700 shadow-2xl">
-            <iframe
-              src="YOUR_VIDEO_URL_HERE"
-              title="Boston Builders AI Demo"
-              className="w-full h-full"
-              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-              allowFullScreen
-            ></iframe>
+          <div className="aspect-video bg-white rounded-xl overflow-hidden border border-slate-700 shadow-2xl flex items-center justify-center">
+            <p className="text-slate-400 text-lg">Demo video coming soon</p>
           </div>
         </div>
       </section>
@@ -299,6 +302,106 @@ export default function Home() {
                 <li className="flex items-start space-x-2">
                   <CheckCircle2 className="w-4 h-4 text-primary mt-0.5 flex-shrink-0" />
                   <span>Task automation</span>
+                </li>
+              </ul>
+            </div>
+
+            {/* Video & Drone Services */}
+            <div className="bg-gradient-to-br from-slate-800 to-slate-900 rounded-xl p-8 border border-slate-700 hover:border-primary/50 transition-all">
+              <div className="w-14 h-14 bg-primary/10 rounded-lg flex items-center justify-center mb-6">
+                <Video className="w-8 h-8 text-primary" />
+              </div>
+              <h3 className="text-2xl font-bold text-white mb-4">Video & Drone Services</h3>
+              <p className="text-slate-300 leading-relaxed mb-4">
+                Professional video editing and drone footage to showcase your projects and attract more clients.
+              </p>
+              <ul className="space-y-2 text-sm text-slate-400">
+                <li className="flex items-start space-x-2">
+                  <CheckCircle2 className="w-4 h-4 text-primary mt-0.5 flex-shrink-0" />
+                  <span>Drone footage & aerial shots</span>
+                </li>
+                <li className="flex items-start space-x-2">
+                  <CheckCircle2 className="w-4 h-4 text-primary mt-0.5 flex-shrink-0" />
+                  <span>Professional video editing</span>
+                </li>
+                <li className="flex items-start space-x-2">
+                  <CheckCircle2 className="w-4 h-4 text-primary mt-0.5 flex-shrink-0" />
+                  <span>Project portfolio videos</span>
+                </li>
+              </ul>
+            </div>
+
+            {/* Marketing & Ad Management */}
+            <div className="bg-gradient-to-br from-slate-800 to-slate-900 rounded-xl p-8 border border-slate-700 hover:border-primary/50 transition-all">
+              <div className="w-14 h-14 bg-primary/10 rounded-lg flex items-center justify-center mb-6">
+                <Megaphone className="w-8 h-8 text-primary" />
+              </div>
+              <h3 className="text-2xl font-bold text-white mb-4">Ad Management</h3>
+              <p className="text-slate-300 leading-relaxed mb-4">
+                Stop paying expensive marketing agencies. We&apos;ll train you to run your own high-converting ads.
+              </p>
+              <ul className="space-y-2 text-sm text-slate-400">
+                <li className="flex items-start space-x-2">
+                  <CheckCircle2 className="w-4 h-4 text-primary mt-0.5 flex-shrink-0" />
+                  <span>Facebook & Instagram ads setup</span>
+                </li>
+                <li className="flex items-start space-x-2">
+                  <CheckCircle2 className="w-4 h-4 text-primary mt-0.5 flex-shrink-0" />
+                  <span>Google Ads campaign management</span>
+                </li>
+                <li className="flex items-start space-x-2">
+                  <CheckCircle2 className="w-4 h-4 text-primary mt-0.5 flex-shrink-0" />
+                  <span>Ad performance tracking</span>
+                </li>
+              </ul>
+            </div>
+
+            {/* Marketing Training */}
+            <div className="bg-gradient-to-br from-slate-800 to-slate-900 rounded-xl p-8 border border-slate-700 hover:border-primary/50 transition-all">
+              <div className="w-14 h-14 bg-primary/10 rounded-lg flex items-center justify-center mb-6">
+                <GraduationCap className="w-8 h-8 text-primary" />
+              </div>
+              <h3 className="text-2xl font-bold text-white mb-4">Marketing Training</h3>
+              <p className="text-slate-300 leading-relaxed mb-4">
+                Learn to handle your own marketing. Save thousands on agency fees while keeping full control.
+              </p>
+              <ul className="space-y-2 text-sm text-slate-400">
+                <li className="flex items-start space-x-2">
+                  <CheckCircle2 className="w-4 h-4 text-primary mt-0.5 flex-shrink-0" />
+                  <span>One-on-one training sessions</span>
+                </li>
+                <li className="flex items-start space-x-2">
+                  <CheckCircle2 className="w-4 h-4 text-primary mt-0.5 flex-shrink-0" />
+                  <span>Marketing playbook templates</span>
+                </li>
+                <li className="flex items-start space-x-2">
+                  <CheckCircle2 className="w-4 h-4 text-primary mt-0.5 flex-shrink-0" />
+                  <span>Ongoing support & guidance</span>
+                </li>
+              </ul>
+            </div>
+
+            {/* SEO-Optimized Website */}
+            <div className="bg-gradient-to-br from-slate-800 to-slate-900 rounded-xl p-8 border border-slate-700 hover:border-primary/50 transition-all">
+              <div className="w-14 h-14 bg-primary/10 rounded-lg flex items-center justify-center mb-6">
+                <Search className="w-8 h-8 text-primary" />
+              </div>
+              <h3 className="text-2xl font-bold text-white mb-4">SEO-Optimized Website</h3>
+              <p className="text-slate-300 leading-relaxed mb-4">
+                Fully optimized website that ranks on Google and converts visitors into paying customers.
+              </p>
+              <ul className="space-y-2 text-sm text-slate-400">
+                <li className="flex items-start space-x-2">
+                  <CheckCircle2 className="w-4 h-4 text-primary mt-0.5 flex-shrink-0" />
+                  <span>Local SEO optimization</span>
+                </li>
+                <li className="flex items-start space-x-2">
+                  <CheckCircle2 className="w-4 h-4 text-primary mt-0.5 flex-shrink-0" />
+                  <span>Fast loading & mobile-friendly</span>
+                </li>
+                <li className="flex items-start space-x-2">
+                  <CheckCircle2 className="w-4 h-4 text-primary mt-0.5 flex-shrink-0" />
+                  <span>Lead capture & conversion tools</span>
                 </li>
               </ul>
             </div>
@@ -452,14 +555,14 @@ export default function Home() {
               Case Study
             </div>
             <h2 className="text-4xl md:text-5xl font-bold text-white mb-4">
-              Solar Señorita: Complete System in 3 Days
+              Solar Señorita: Sales Operating System in 2 Weeks
             </h2>
           </div>
 
           <div className="bg-gradient-to-br from-slate-900 to-slate-800 rounded-xl p-8 md:p-12 border border-primary/30">
             <div className="grid md:grid-cols-3 gap-8 mb-8">
               <div className="text-center">
-                <div className="text-4xl font-bold text-primary mb-2">3 Days</div>
+                <div className="text-4xl font-bold text-primary mb-2">2 Weeks</div>
                 <div className="text-slate-300">From Start to Launch</div>
               </div>
               <div className="text-center">
@@ -474,29 +577,39 @@ export default function Home() {
 
             <div className="space-y-6 text-slate-300 leading-relaxed">
               <p>
-                Solar Señorita needed a complete operating system to manage their growing solar
-                installation business. Within just 3 days, we delivered a fully functional system
+                Solar Señorita needed a complete sales operating system to manage their growing solar
+                installation business. Within just 2 weeks, we delivered a fully functional system
                 including:
               </p>
 
               <ul className="space-y-3">
                 <li className="flex items-start space-x-3">
                   <CheckCircle2 className="w-5 h-5 text-primary mt-1 flex-shrink-0" />
-                  <span>
-                    Custom lead tracking system integrated with local permit databases
-                  </span>
+                  <span>Lead Hunter Map with real-time permit tracking</span>
                 </li>
                 <li className="flex items-start space-x-3">
                   <CheckCircle2 className="w-5 h-5 text-primary mt-1 flex-shrink-0" />
-                  <span>Project management dashboard tailored to solar installations</span>
+                  <span>Events automation for streamlined operations</span>
                 </li>
                 <li className="flex items-start space-x-3">
                   <CheckCircle2 className="w-5 h-5 text-primary mt-1 flex-shrink-0" />
-                  <span>Automated estimating tools with solar-specific calculations</span>
+                  <span>Cold calling suite with call tracking and scripts</span>
                 </li>
                 <li className="flex items-start space-x-3">
                   <CheckCircle2 className="w-5 h-5 text-primary mt-1 flex-shrink-0" />
-                  <span>Client portal for proposal reviews and approvals</span>
+                  <span>AI-powered leads tracking system</span>
+                </li>
+                <li className="flex items-start space-x-3">
+                  <CheckCircle2 className="w-5 h-5 text-primary mt-1 flex-shrink-0" />
+                  <span>Smart calendar for appointment management</span>
+                </li>
+                <li className="flex items-start space-x-3">
+                  <CheckCircle2 className="w-5 h-5 text-primary mt-1 flex-shrink-0" />
+                  <span>Sales dashboard with real-time analytics</span>
+                </li>
+                <li className="flex items-start space-x-3">
+                  <CheckCircle2 className="w-5 h-5 text-primary mt-1 flex-shrink-0" />
+                  <span>Full SEO-optimized website to generate leads from Google</span>
                 </li>
               </ul>
 
@@ -504,6 +617,80 @@ export default function Home() {
                 &quot;Jorge understood our business from day one because he&apos;s been in
                 construction. He didn&apos;t just build software—he built a system that thinks like
                 a contractor.&quot;
+              </p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Case Study 2 - Econova */}
+      <section className="py-20 px-4 sm:px-6 lg:px-8">
+        <div className="max-w-5xl mx-auto">
+          <div className="text-center mb-12">
+            <div className="inline-block px-4 py-2 bg-primary/10 rounded-full text-primary font-semibold mb-4">
+              Case Study
+            </div>
+            <h2 className="text-4xl md:text-5xl font-bold text-white mb-4">
+              Econova Energy Savings: Complete System in 1 Month
+            </h2>
+          </div>
+
+          <div className="bg-gradient-to-br from-slate-900 to-slate-800 rounded-xl p-8 md:p-12 border border-primary/30">
+            <div className="grid md:grid-cols-3 gap-8 mb-8">
+              <div className="text-center">
+                <div className="text-4xl font-bold text-primary mb-2">1 Month</div>
+                <div className="text-slate-300">From Start to Launch</div>
+              </div>
+              <div className="text-center">
+                <div className="text-4xl font-bold text-primary mb-2">AI-Powered</div>
+                <div className="text-slate-300">Everything Automated</div>
+              </div>
+              <div className="text-center">
+                <div className="text-4xl font-bold text-primary mb-2">Insulation</div>
+                <div className="text-slate-300">Industry Vertical</div>
+              </div>
+            </div>
+
+            <div className="space-y-6 text-slate-300 leading-relaxed">
+              <p>
+                Econova Energy Savings needed a complete operating system with full AI integration
+                to manage their energy efficiency business. Within 1 month, we delivered:
+              </p>
+
+              <ul className="space-y-3">
+                <li className="flex items-start space-x-3">
+                  <CheckCircle2 className="w-5 h-5 text-primary mt-1 flex-shrink-0" />
+                  <span>Full SEO-optimized website ranking on Google</span>
+                </li>
+                <li className="flex items-start space-x-3">
+                  <CheckCircle2 className="w-5 h-5 text-primary mt-1 flex-shrink-0" />
+                  <span>Lead Hunter Map with real-time permit tracking</span>
+                </li>
+                <li className="flex items-start space-x-3">
+                  <CheckCircle2 className="w-5 h-5 text-primary mt-1 flex-shrink-0" />
+                  <span>Cold calling suite with AI-powered scripts</span>
+                </li>
+                <li className="flex items-start space-x-3">
+                  <CheckCircle2 className="w-5 h-5 text-primary mt-1 flex-shrink-0" />
+                  <span>AI-optimized email and text automations</span>
+                </li>
+                <li className="flex items-start space-x-3">
+                  <CheckCircle2 className="w-5 h-5 text-primary mt-1 flex-shrink-0" />
+                  <span>Intelligent leads tracking system with AI insights</span>
+                </li>
+                <li className="flex items-start space-x-3">
+                  <CheckCircle2 className="w-5 h-5 text-primary mt-1 flex-shrink-0" />
+                  <span>Custom estimation tools for energy projects</span>
+                </li>
+                <li className="flex items-start space-x-3">
+                  <CheckCircle2 className="w-5 h-5 text-primary mt-1 flex-shrink-0" />
+                  <span>AI-enhanced project management dashboard</span>
+                </li>
+              </ul>
+
+              <p className="italic border-l-4 border-primary pl-4 py-2">
+                &quot;The AI automation has saved us countless hours every week. Jorge didn&apos;t
+                just build us software—he built us a competitive advantage.&quot;
               </p>
             </div>
           </div>
@@ -574,10 +761,10 @@ export default function Home() {
         <div className="max-w-5xl mx-auto">
           <div className="text-center mb-12">
             <h2 className="text-4xl md:text-5xl font-bold text-white mb-4">
-              Simple, Transparent Pricing
+              Want to Know How Much & How It Works?
             </h2>
             <p className="text-xl text-slate-300">
-              Quality development takes time. That&apos;s why we work together for 3 months.
+              Every business is different. Let&apos;s jump on a call and I&apos;ll walk you through exactly what you need and how we can work together.
             </p>
           </div>
 
@@ -588,8 +775,8 @@ export default function Home() {
                 Most Popular
               </div>
               <div className="text-center mb-8">
-                <div className="text-5xl font-bold text-white mb-2">$2,000</div>
-                <div className="text-slate-300">per month</div>
+                <div className="text-4xl font-bold text-white mb-2">Custom Pricing</div>
+                <div className="text-slate-300">Tailored to your business needs</div>
                 <div className="text-sm text-slate-400 mt-2">3-month commitment</div>
               </div>
 
@@ -602,11 +789,15 @@ export default function Home() {
                 </li>
                 <li className="flex items-start space-x-3">
                   <CheckCircle2 className="w-5 h-5 text-primary mt-1 flex-shrink-0" />
-                  <span className="text-slate-300">Lead Hunter, CRM, Estimating, AI Assistant</span>
+                  <span className="text-slate-300">Full software suite + SEO website</span>
                 </li>
                 <li className="flex items-start space-x-3">
                   <CheckCircle2 className="w-5 h-5 text-primary mt-1 flex-shrink-0" />
-                  <span className="text-slate-300">3-week delivery timeline</span>
+                  <span className="text-slate-300">Video, drone & ad management services</span>
+                </li>
+                <li className="flex items-start space-x-3">
+                  <CheckCircle2 className="w-5 h-5 text-primary mt-1 flex-shrink-0" />
+                  <span className="text-slate-300">Marketing training (no agency needed)</span>
                 </li>
                 <li className="flex items-start space-x-3">
                   <CheckCircle2 className="w-5 h-5 text-primary mt-1 flex-shrink-0" />
@@ -624,12 +815,12 @@ export default function Home() {
                 </li>
               </ul>
 
-              <a
-                href="#contact"
+              <button
+                onClick={() => setShowLeadForm(true)}
                 className="block w-full text-center px-8 py-4 bg-primary hover:bg-primary-dark text-white font-bold rounded-lg transition-colors"
               >
                 Apply Now
-              </a>
+              </button>
             </div>
 
             {/* Add-ons */}
@@ -768,13 +959,30 @@ export default function Home() {
           </div>
 
           <div className="border-t border-slate-700 pt-8">
-            <div className="flex flex-col md:flex-row items-center justify-between space-y-4 md:space-y-0">
+            <div className="flex flex-col items-center space-y-4">
               <div className="flex items-center space-x-3">
                 <div className="w-10 h-10 bg-gradient-to-br from-primary to-primary-dark rounded-lg flex items-center justify-center">
                   <HardHat className="w-6 h-6 text-white" />
                 </div>
                 <span className="text-xl font-bold text-white">Boston Builders AI</span>
               </div>
+
+              <div className="flex items-center space-x-6 text-sm">
+                <a
+                  href="/terms"
+                  className="text-slate-400 hover:text-primary transition-colors"
+                >
+                  Terms of Service
+                </a>
+                <span className="text-slate-600">|</span>
+                <a
+                  href="/privacy"
+                  className="text-slate-400 hover:text-primary transition-colors"
+                >
+                  Privacy Policy
+                </a>
+              </div>
+
               <p className="text-slate-400 text-sm">
                 &copy; {new Date().getFullYear()} Boston Builders AI. All rights reserved.
               </p>
@@ -782,6 +990,20 @@ export default function Home() {
           </div>
         </div>
       </footer>
+
+      {/* AI Chat Widget */}
+      <ChatWidget />
+
+      {/* Lead Form Modal */}
+      {showLeadForm && (
+        <LeadForm
+          onClose={() => setShowLeadForm(false)}
+          onSuccess={() => {
+            setShowLeadForm(false);
+            alert('Thank you for applying! We will contact you within 24 hours.');
+          }}
+        />
+      )}
     </div>
   );
 }
