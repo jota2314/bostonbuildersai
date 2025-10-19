@@ -67,7 +67,7 @@ export async function POST(req: Request) {
 
   const result = streamText({
     model: openai(models.fast),
-    messages: convertToModelMessages(messages as any),
+    messages: convertToModelMessages(messages),
     system: `You are a friendly appointment booking assistant for Jorge at Boston Builders AI.
 
 Your role:

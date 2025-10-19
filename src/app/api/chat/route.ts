@@ -282,7 +282,7 @@ const tools = {
 };
 
 type MessagePart = { type?: string; text?: string };
-type ChatMessage = { id: string; role: string; content?: string; parts?: MessagePart[] };
+type ChatMessage = { id: string; role: 'user' | 'assistant' | 'system'; content?: string; parts?: MessagePart[] };
 
 export async function POST(req: Request) {
   try {
@@ -342,7 +342,8 @@ export async function POST(req: Request) {
     const systemPrompt = getSystemPrompt();
     const result = await streamText({
       model: openai(models.default),
-      messages: convertToModelMessages(messages),
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      messages: convertToModelMessages(messages as any),
       system: systemPrompt,
       tools,
       temperature: 0.8,

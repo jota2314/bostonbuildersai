@@ -28,8 +28,23 @@ const CalendarChatRequestSchema = z.object({
 
 export async function POST(req: Request) {
   try {
-    const { messages, userId, currentDate, events, todos } = CalendarChatRequestSchema.parse(await req.json());
+    const { messages: rawMessages, userId, currentDate, events, todos } = CalendarChatRequestSchema.parse(await req.json());
     const today = new Date().toISOString().split('T')[0];
+
+    // Clean messages: remove tool-related parts that convertToModelMessages can't handle
+    const messages = rawMessages
+      .filter((msg) => msg.role === 'user' || msg.role === 'assistant')
+      .map((msg) => {
+        if (msg.role === 'user') return msg;
+        if (msg.role === 'assistant' && msg.parts) {
+          const cleanParts = msg.parts.filter((part) => part.type === 'text');
+          if (cleanParts.length > 0) {
+            return { ...msg, parts: cleanParts };
+          }
+        }
+        return null;
+      })
+      .filter((msg) => msg !== null);
 
     const result = await streamText({
     model: openai(models.fast),
