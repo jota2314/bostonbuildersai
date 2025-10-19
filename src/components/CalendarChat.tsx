@@ -51,7 +51,7 @@ export default function CalendarChat({
         todos,
       },
     }),
-    maxSteps: 5, // Enable multi-step tool calls
+    // SDK 5: No maxSteps needed - server handles multi-step automatically
     onFinish: () => {
       // Refresh calendar data after AI creates events
       onEventsUpdate();
