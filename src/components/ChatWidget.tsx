@@ -35,9 +35,11 @@ export default function ChatWidget() {
 
     if (!message.parts || message.parts.length === 0) return null;
 
+    type MessagePart = { type?: string; text?: string; state?: string; output?: unknown };
+
     return (
       <div className="space-y-2">
-        {message.parts.map((part: any, idx: number) => {
+        {message.parts.map((part: MessagePart, idx: number) => {
           if (part.type === 'text') {
             return <div key={idx}>{part.text}</div>;
           }

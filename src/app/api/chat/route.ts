@@ -6,8 +6,7 @@ import {
   createCalendarEvent,
   getEventsByUserAndDate,
   createOrGetConversation,
-  saveChatMessage,
-  updateConversationLead
+  saveChatMessage
 } from '@/lib/db-operations';
 import type { LeadData, CalendarEvent } from '@/lib/types';
 
@@ -282,20 +281,23 @@ const tools = {
   }),
 };
 
+type MessagePart = { type?: string; text?: string };
+type ChatMessage = { id: string; role: string; content?: string; parts?: MessagePart[] };
+
 export async function POST(req: Request) {
   try {
     const { messages: rawMessages } = ChatRequestSchema.parse(await req.json());
 
     // Clean messages: remove tool-related parts that convertToModelMessages can't handle
     const messages = rawMessages
-      .filter((msg: any) => msg.role === 'user' || msg.role === 'assistant')
-      .map((msg: any) => {
+      .filter((msg: ChatMessage) => msg.role === 'user' || msg.role === 'assistant')
+      .map((msg: ChatMessage) => {
         if (msg.role === 'user') return msg;
-        
+
         // For assistant messages, filter out step-start and tool parts, keep only text
         if (msg.role === 'assistant') {
-          const cleanParts = (msg.parts || []).filter((part: any) => part.type === 'text');
-          
+          const cleanParts = (msg.parts || []).filter((part: MessagePart) => part.type === 'text');
+
           // Only keep assistant message if it has text content
           if (cleanParts.length > 0) {
             return { ...msg, parts: cleanParts };
@@ -303,7 +305,7 @@ export async function POST(req: Request) {
         }
         return null;
       })
-      .filter((msg: any) => msg !== null);
+      .filter((msg: ChatMessage | null) => msg !== null);
 
     console.log('📨 Received messages:', rawMessages.length, '→ Filtered to:', messages.length);
     console.log('Filtered messages:', JSON.stringify(messages, null, 2));
@@ -340,7 +342,7 @@ export async function POST(req: Request) {
     const systemPrompt = getSystemPrompt();
     const result = await streamText({
       model: openai(models.default),
-      messages: convertToModelMessages(messages as any),
+      messages: convertToModelMessages(messages),
       system: systemPrompt,
       tools,
       temperature: 0.8,
