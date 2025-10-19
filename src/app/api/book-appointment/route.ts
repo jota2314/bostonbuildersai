@@ -67,7 +67,8 @@ export async function POST(req: Request) {
 
   const result = streamText({
     model: openai(models.fast),
-    messages: convertToModelMessages(messages),
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    messages: convertToModelMessages(messages as any),
     system: `You are a friendly appointment booking assistant for Jorge at Boston Builders AI.
 
 Your role:

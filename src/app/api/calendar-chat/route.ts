@@ -48,7 +48,8 @@ export async function POST(req: Request) {
 
     const result = await streamText({
     model: openai(models.fast),
-    messages: convertToModelMessages(messages),
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    messages: convertToModelMessages(messages as any),
     system: `You are a helpful calendar assistant that helps users manage their schedule efficiently.
 
 Current Context:
