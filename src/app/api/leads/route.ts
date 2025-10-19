@@ -16,12 +16,23 @@ export async function POST(req: Request) {
       location,
       notes,
       source = 'website_form',
+      consent_to_contact = false,
+      consent_date,
+      consent_ip_address,
     } = body;
 
     // Validate required fields
     if (!company_name || !contact_name || !email || !business_type) {
       return NextResponse.json(
         { error: 'Missing required fields' },
+        { status: 400 }
+      );
+    }
+
+    // Validate TCPA consent
+    if (!consent_to_contact) {
+      return NextResponse.json(
+        { error: 'Consent to contact is required' },
         { status: 400 }
       );
     }
@@ -40,6 +51,9 @@ export async function POST(req: Request) {
       status: 'new',
       priority: 'medium',
       user_id: null, // Public leads don't have a user_id initially
+      consent_to_contact,
+      consent_date: consent_date || null,
+      consent_ip_address: consent_ip_address || null,
     };
 
     // Create lead using shared utility

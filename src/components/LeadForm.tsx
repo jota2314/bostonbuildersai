@@ -20,6 +20,7 @@ export default function LeadForm({ onClose, onSuccess, isModal = true }: LeadFor
     location: '',
     notes: '',
     source: 'website_form',
+    consent_to_contact: false,
   });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -29,7 +30,25 @@ export default function LeadForm({ onClose, onSuccess, isModal = true }: LeadFor
     setLoading(true);
     setError('');
 
+    // Validate consent
+    if (!formData.consent_to_contact) {
+      setError('You must agree to be contacted to submit this form.');
+      setLoading(false);
+      return;
+    }
+
     try {
+      // Get user's IP address
+      let ipAddress = null;
+      try {
+        const ipResponse = await fetch('https://api.ipify.org?format=json');
+        const ipData = await ipResponse.json();
+        ipAddress = ipData.ip;
+      } catch {
+        // If IP fetch fails, continue without it
+        console.warn('Could not fetch IP address');
+      }
+
       const response = await fetch('/api/leads', {
         method: 'POST',
         headers: {
@@ -38,6 +57,9 @@ export default function LeadForm({ onClose, onSuccess, isModal = true }: LeadFor
         body: JSON.stringify({
           ...formData,
           annual_revenue: formData.annual_revenue ? parseInt(formData.annual_revenue) : null,
+          consent_to_contact: formData.consent_to_contact,
+          consent_date: new Date().toISOString(),
+          consent_ip_address: ipAddress,
         }),
       });
 
@@ -56,6 +78,7 @@ export default function LeadForm({ onClose, onSuccess, isModal = true }: LeadFor
         location: '',
         notes: '',
         source: 'website_form',
+        consent_to_contact: false,
       });
 
       if (onSuccess) {
@@ -223,6 +246,32 @@ export default function LeadForm({ onClose, onSuccess, isModal = true }: LeadFor
           className="w-full px-4 py-3 bg-slate-800 border border-slate-700 rounded-lg text-white placeholder-slate-400 focus:outline-none focus:border-primary transition-colors resize-none"
           placeholder="Tell us about your needs..."
         />
+      </div>
+
+      {/* TCPA Consent Checkbox */}
+      <div className="bg-slate-800/50 border border-slate-700 rounded-lg p-4">
+        <label className="flex items-start space-x-3 cursor-pointer">
+          <input
+            type="checkbox"
+            required
+            checked={formData.consent_to_contact}
+            onChange={(e) => setFormData({ ...formData, consent_to_contact: e.target.checked })}
+            className="mt-1 w-4 h-4 rounded border-slate-600 text-primary focus:ring-primary focus:ring-offset-slate-900"
+          />
+          <span className="text-sm text-slate-300 leading-relaxed">
+            I consent to receive calls, text messages, and emails from Boston Builders AI at the contact information provided above.
+            I understand that I may receive marketing communications and that message and data rates may apply.
+            I can opt out at any time. By checking this box, I agree to the{' '}
+            <a href="/terms" target="_blank" className="text-primary hover:text-primary-dark underline">
+              Terms of Service
+            </a>
+            {' '}and{' '}
+            <a href="/privacy" target="_blank" className="text-primary hover:text-primary-dark underline">
+              Privacy Policy
+            </a>
+            . *
+          </span>
+        </label>
       </div>
 
       <div className="flex gap-3 pt-4">
