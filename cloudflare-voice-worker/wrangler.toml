@@ -1,0 +1,12 @@
+name = "boston-builders-voice-ai"
+main = "index.js"
+compatibility_date = "2024-01-01"
+
+# Environment variables (set these with `wrangler secret put`)
+# - OPENAI_API_KEY
+# - USER_ID
+# - NEXT_JS_API_URL (your Next.js app URL, e.g., https://your-app.vercel.app)
+# - API_SECRET_KEY (generate a random secret for securing your API endpoints)
+
+[vars]
+# Non-secret variables can go here

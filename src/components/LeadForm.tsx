@@ -67,6 +67,33 @@ export default function LeadForm({ onClose, onSuccess, isModal = true }: LeadFor
         throw new Error('Failed to submit lead');
       }
 
+      const leadResult = await response.json();
+      const leadId = leadResult.data?.id;
+
+      // Initiate AI call immediately after lead is created
+      try {
+        const callResponse = await fetch('/api/initiate-call', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            phoneNumber: formData.phone,
+            leadId: leadId,
+            leadName: formData.contact_name,
+          }),
+        });
+
+        if (callResponse.ok) {
+          console.log('✅ AI call initiated successfully');
+        } else {
+          console.error('Failed to initiate AI call');
+        }
+      } catch (callError) {
+        console.error('Error initiating AI call:', callError);
+        // Don't fail the form submission if call fails
+      }
+
       // Reset form
       setFormData({
         company_name: '',
@@ -160,12 +187,13 @@ export default function LeadForm({ onClose, onSuccess, isModal = true }: LeadFor
 
         <div>
           <label className="block text-sm font-medium text-slate-300 mb-2">
-            Phone
+            Phone *
           </label>
           <div className="relative">
             <Phone className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
             <input
               type="tel"
+              required
               value={formData.phone}
               onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
               className="w-full pl-10 pr-4 py-3 bg-slate-800 border border-slate-700 rounded-lg text-white placeholder-slate-400 focus:outline-none focus:border-primary transition-colors"

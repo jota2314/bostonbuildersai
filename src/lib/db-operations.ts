@@ -1,5 +1,5 @@
 import { getServerSupabase } from './supabase-server';
-import type { LeadData, CalendarEvent, Todo, ChatMessage, ApiResponse } from './types';
+import type { LeadData, CalendarEvent, Todo, ChatMessage, PhoneCall, ApiResponse } from './types';
 
 const supabase = getServerSupabase();
 
@@ -195,5 +195,47 @@ export async function getConversationMessages(conversationId: string): Promise<A
   } catch (error) {
     console.error('Exception in getConversationMessages:', error);
     return { success: false, error: 'Failed to fetch messages' };
+  }
+}
+
+// Phone call operations
+export async function createPhoneCall(phoneCallData: PhoneCall): Promise<ApiResponse<{ id: string }>> {
+  try {
+    const { data, error } = await supabase
+      .from('phone_calls')
+      .insert([phoneCallData])
+      .select()
+      .single();
+
+    if (error) {
+      console.error('Error creating phone call:', error);
+      return { success: false, error: error.message };
+    }
+
+    return { success: true, data };
+  } catch (error) {
+    console.error('Exception in createPhoneCall:', error);
+    return { success: false, error: 'Failed to create phone call' };
+  }
+}
+
+export async function updatePhoneCall(callSid: string, updates: Partial<PhoneCall>): Promise<ApiResponse> {
+  try {
+    const { data, error } = await supabase
+      .from('phone_calls')
+      .update(updates)
+      .eq('call_sid', callSid)
+      .select()
+      .single();
+
+    if (error) {
+      console.error('Error updating phone call:', error);
+      return { success: false, error: error.message };
+    }
+
+    return { success: true, data };
+  } catch (error) {
+    console.error('Exception in updatePhoneCall:', error);
+    return { success: false, error: 'Failed to update phone call' };
   }
 }

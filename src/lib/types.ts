@@ -58,3 +58,18 @@ export interface ChatMessage {
   tool_results?: unknown;
   metadata?: Record<string, unknown>;
 }
+
+// Phone call types
+export interface PhoneCall {
+  lead_id?: string | null;
+  call_sid: string;
+  phone_number: string;
+  status: 'initiated' | 'in-progress' | 'completed' | 'failed' | 'no-answer';
+  duration_seconds?: number | null;
+  transcript?: string | null;
+  meeting_scheduled?: boolean;
+  meeting_date?: string | null;
+  meeting_time?: string | null;
+  error_message?: string | null;
+  user_id?: string | null;
+}
