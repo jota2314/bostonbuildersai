@@ -46,13 +46,16 @@ async function createAppointment(appointmentData: AppointmentData, ownerId: stri
   return await createCalendarEvent(eventData);
 }
 
+type MessagePart = { type?: string; text?: string };
+type BookingMessage = { id?: string; role: string; content?: string; parts?: MessagePart[] };
+
 export async function POST(req: Request) {
   const { messages, ownerId } = BookAppointmentRequestSchema.parse(await req.json());
   const today = new Date().toISOString().split('T')[0];
 
   const result = streamText({
     model: openai(models.fast),
-    messages: convertToModelMessages(messages),
+    messages: convertToModelMessages(messages as BookingMessage[]),
     system: `You are a friendly appointment booking assistant for Jorge at Boston Builders AI.
 
 Your role:
