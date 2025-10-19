@@ -13,7 +13,7 @@ const MessagePartSchema = z.object({
 
 const MessageSchema = z.object({
   id: z.string().optional(),
-  role: z.enum(['user', 'assistant', 'system']).optional(),
+  role: z.enum(['user', 'assistant', 'system']),
   content: z.string().optional(),
   parts: z.array(MessagePartSchema).optional(),
 });
