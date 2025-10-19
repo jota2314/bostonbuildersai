@@ -330,7 +330,11 @@ export default function CalendarPage() {
 
   // Get events for a specific date
   const getEventsForDate = (date: Date) => {
-    const dateString = date.toISOString().split('T')[0];
+    // Use local date formatting to avoid timezone issues
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    const dateString = `${year}-${month}-${day}`;
     return events.filter(event => event.event_date === dateString);
   };
 
@@ -668,9 +672,14 @@ export default function CalendarPage() {
                         key={index}
                         className="relative h-16 border-l border-slate-700 hover:bg-slate-800/30 cursor-pointer overflow-visible"
                         onClick={() => {
+                          // Use local date formatting to avoid timezone issues
+                          const year = date.getFullYear();
+                          const month = String(date.getMonth() + 1).padStart(2, '0');
+                          const day = String(date.getDate()).padStart(2, '0');
+                          const dateString = `${year}-${month}-${day}`;
                           setEventForm({
                             ...eventForm,
-                            event_date: date.toISOString().split('T')[0],
+                            event_date: dateString,
                             start_time: `${hour.toString().padStart(2, '0')}:00`,
                           });
                           setShowEventModal(true);
@@ -909,7 +918,7 @@ export default function CalendarPage() {
       {/* AI Calendar Assistant */}
       <CalendarChat
         userId={userId}
-        currentDate={currentDate.toISOString().split('T')[0]}
+        currentDate={`${currentDate.getFullYear()}-${String(currentDate.getMonth() + 1).padStart(2, '0')}-${String(currentDate.getDate()).padStart(2, '0')}`}
         events={events}
         todos={todos}
         onEventsUpdate={refreshCalendarData}

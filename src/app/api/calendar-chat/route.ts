@@ -29,7 +29,9 @@ const CalendarChatRequestSchema = z.object({
 export async function POST(req: Request) {
   try {
     const { messages: rawMessages, userId, currentDate, events, todos } = CalendarChatRequestSchema.parse(await req.json());
-    const today = new Date().toISOString().split('T')[0];
+    // Use timezone-safe date formatting
+    const now = new Date();
+    const today = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
 
     // Clean messages: remove tool-related parts that convertToModelMessages can't handle
     const messages = rawMessages

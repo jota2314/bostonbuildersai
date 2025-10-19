@@ -184,7 +184,11 @@ async function bookAppointment(args: {
 // Get current date for the AI
 function getCurrentDateInfo() {
   const now = new Date();
-  const dateStr = now.toISOString().split('T')[0]; // YYYY-MM-DD
+  // Use timezone-safe date formatting to avoid day shifts
+  const year = now.getFullYear();
+  const month = String(now.getMonth() + 1).padStart(2, '0');
+  const day = String(now.getDate()).padStart(2, '0');
+  const dateStr = `${year}-${month}-${day}`;
   const dayOfWeek = now.toLocaleDateString('en-US', { weekday: 'long' });
   return { dateStr, dayOfWeek };
 }
