@@ -31,10 +31,6 @@ export default function ChatWidget() {
 
   // Render message content including tool UI parts (SDK 5)
   const renderMessageContent = (message: typeof messages[0]) => {
-    if (typeof message.content === 'string') {
-      return <>{message.content}</>;
-    }
-
     if (!message.parts || message.parts.length === 0) return null;
 
     type MessagePart = { type?: string; text?: string; state?: string; output?: unknown };
