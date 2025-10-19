@@ -3,7 +3,7 @@
 import { MessageCircle, X, Send } from 'lucide-react';
 import { useState, useRef, useEffect } from 'react';
 import { useChat } from '@ai-sdk/react';
-import { isToolUIPart, getToolName } from 'ai';
+import { isToolUIPart, getToolName, DefaultChatTransport } from 'ai';
 
 export default function ChatWidget() {
   const [isOpen, setIsOpen] = useState(false);
@@ -11,7 +11,9 @@ export default function ChatWidget() {
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   const { messages, sendMessage, status, error } = useChat({
-    api: '/api/chat',
+    transport: new DefaultChatTransport({
+      api: '/api/chat',
+    }),
     // SDK 5: No maxSteps needed - server handles multi-step automatically
   });
 
