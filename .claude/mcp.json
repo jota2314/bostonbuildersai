@@ -1,0 +1,26 @@
+{
+  "mcpServers": {
+    "supabase": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "@supabase/mcp-server-supabase@latest",
+        "--access-token",
+        "sbp_09bf3f0589bf6616e6137e5c65f61b414bda89fd",
+        "--project-ref",
+        "amonwicqzmmpzybnzthp"
+      ]
+    },
+    "playwright": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "@playwright/mcp@latest",
+        "--headless"
+      ]
+    },
+    "vercel": {
+      "url": "https://mcp.vercel.com"
+    }
+  }
+}

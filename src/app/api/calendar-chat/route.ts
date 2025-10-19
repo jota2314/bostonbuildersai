@@ -1,18 +1,38 @@
-import { openai } from '@ai-sdk/openai';
+import { openai, models } from '@/lib/ai/provider';
 import { streamText, tool, convertToModelMessages } from 'ai';
-import { z } from 'zod/v3';
+import { z } from 'zod';
 import { createCalendarEvent, createTodo } from '@/lib/db-operations';
 import type { CalendarEvent, Todo } from '@/lib/types';
 
 export const runtime = 'edge';
+// Request validation
+const MessagePartSchema = z.object({
+  type: z.string().optional(),
+  text: z.string().optional(),
+});
+
+const MessageSchema = z.object({
+  id: z.string().optional(),
+  role: z.enum(['user', 'assistant', 'system']).optional(),
+  content: z.string().optional(),
+  parts: z.array(MessagePartSchema).optional(),
+});
+
+const CalendarChatRequestSchema = z.object({
+  messages: z.array(MessageSchema).min(1),
+  userId: z.string(),
+  currentDate: z.string().optional(),
+  events: z.any().optional(),
+  todos: z.any().optional(),
+});
 
 export async function POST(req: Request) {
   try {
-    const { messages, userId, currentDate, events, todos } = await req.json();
+    const { messages, userId, currentDate, events, todos } = CalendarChatRequestSchema.parse(await req.json());
     const today = new Date().toISOString().split('T')[0];
 
     const result = await streamText({
-    model: openai('gpt-4o-mini'),
+    model: openai(models.fast),
     messages: convertToModelMessages(messages),
     system: `You are a helpful calendar assistant that helps users manage their schedule efficiently.
 

@@ -3,6 +3,7 @@
 import { MessageCircle, X, Send } from 'lucide-react';
 import { useState, useRef, useEffect } from 'react';
 import { useChat } from '@ai-sdk/react';
+import { isToolUIPart, getToolName } from 'ai';
 
 export default function ChatWidget() {
   const [isOpen, setIsOpen] = useState(false);
@@ -11,7 +12,7 @@ export default function ChatWidget() {
 
   const { messages, sendMessage, status, error } = useChat({
     api: '/api/chat',
-    maxSteps: 5, // Enable multi-step tool calls
+    // SDK 5: No maxSteps needed - server handles multi-step automatically
   });
 
   useEffect(() => {
@@ -26,17 +27,45 @@ export default function ChatWidget() {
     setInput('');
   };
 
-  // Extract text content from message
-  const getMessageText = (message: typeof messages[0]) => {
-    // Handle both string content and parts array
+  // Render message content including tool UI parts (SDK 5)
+  const renderMessageContent = (message: typeof messages[0]) => {
     if (typeof message.content === 'string') {
-      return message.content;
+      return <>{message.content}</>;
     }
-    // If content has parts, extract text parts
-    return message.parts
-      ?.filter((part: { type?: string }) => part.type === 'text')
-      .map((part: { text?: string }) => part.text)
-      .join('') || '';
+
+    if (!message.parts || message.parts.length === 0) return null;
+
+    return (
+      <div className="space-y-2">
+        {message.parts.map((part: any, idx: number) => {
+          if (part.type === 'text') {
+            return <div key={idx}>{part.text}</div>;
+          }
+
+          if (isToolUIPart(part)) {
+            const name = getToolName(part);
+            const isDone = part.state === 'output-available';
+            return (
+              <details key={`tool-${idx}`} className="bg-slate-800/50 rounded p-2">
+                <summary className="cursor-pointer">
+                  <span className="font-semibold">{name}</span>
+                  <span className="ml-2 text-xs opacity-70">{isDone ? 'done' : 'calling...'}</span>
+                </summary>
+                {isDone ? (
+                  <pre className="mt-2 text-xs whitespace-pre-wrap break-words">
+                    {typeof part.output === 'string'
+                      ? part.output
+                      : JSON.stringify(part.output, null, 2)}
+                  </pre>
+                ) : null}
+              </details>
+            );
+          }
+
+          return null;
+        })}
+      </div>
+    );
   };
 
   return (
@@ -87,7 +116,7 @@ export default function ChatWidget() {
                       : 'bg-slate-700 text-slate-100'
                   }`}
                 >
-                  {getMessageText(message)}
+                  {renderMessageContent(message)}
                 </div>
               </div>
             ))}

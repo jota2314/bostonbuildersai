@@ -1,5 +1,5 @@
-import { openai } from '@ai-sdk/openai';
-import { streamText, tool, convertToModelMessages, generateText } from 'ai';
+import { openai, models } from '@/lib/ai/provider';
+import { streamText, tool, convertToModelMessages, stepCountIs } from 'ai';
 import { z } from 'zod';
 import {
   createLead,
@@ -10,6 +10,23 @@ import {
   updateConversationLead
 } from '@/lib/db-operations';
 import type { LeadData, CalendarEvent } from '@/lib/types';
+
+// Request validation
+const MessagePartSchema = z.object({
+  type: z.string().optional(),
+  text: z.string().optional(),
+});
+
+const MessageSchema = z.object({
+  id: z.string(),
+  role: z.enum(['user', 'assistant', 'system']),
+  content: z.string().optional(),
+  parts: z.array(MessagePartSchema).optional(),
+});
+
+const ChatRequestSchema = z.object({
+  messages: z.array(MessageSchema).min(1),
+});
 
 export const runtime = 'edge';
 export const dynamic = 'force-dynamic';
@@ -69,8 +86,8 @@ async function saveLead(args: {
 
   console.log('✅ Lead saved successfully with consent');
 
-  // Return lead ID so we can link it to the conversation
-  return JSON.stringify({ status: 'SAVED_SUCCESSFULLY', lead_id: leadResult.data?.id });
+  // Return a clear message that tells the AI to proceed to scheduling
+  return `Lead information saved successfully. Now ask the user what day works best for their call with Jorge.`;
 }
 
 // Tool 2: Check availability for a specific date
@@ -215,6 +232,7 @@ CRITICAL RULES:
 - Don't ask multiple questions in one message
 - Create momentum - each message should feel like progress
 - Keep it short. Nobody reads paragraphs in chat.
+- IMPORTANT: After calling ANY tool, you MUST respond with a short message to the user. Never end the conversation after a tool call without a text response.
 
 Remember: You're helping contractors grow their business. Be confident, be helpful, be fast.`;
 }
@@ -266,9 +284,29 @@ const tools = {
 
 export async function POST(req: Request) {
   try {
-    const { messages } = await req.json();
+    const { messages: rawMessages } = ChatRequestSchema.parse(await req.json());
 
-    console.log('📨 Received messages:', messages.length);
+    // Clean messages: remove tool-related parts that convertToModelMessages can't handle
+    const messages = rawMessages
+      .filter((msg: any) => msg.role === 'user' || msg.role === 'assistant')
+      .map((msg: any) => {
+        if (msg.role === 'user') return msg;
+        
+        // For assistant messages, filter out step-start and tool parts, keep only text
+        if (msg.role === 'assistant') {
+          const cleanParts = (msg.parts || []).filter((part: any) => part.type === 'text');
+          
+          // Only keep assistant message if it has text content
+          if (cleanParts.length > 0) {
+            return { ...msg, parts: cleanParts };
+          }
+        }
+        return null;
+      })
+      .filter((msg: any) => msg !== null);
+
+    console.log('📨 Received messages:', rawMessages.length, '→ Filtered to:', messages.length);
+    console.log('Filtered messages:', JSON.stringify(messages, null, 2));
     console.log('Last user message:', messages[messages.length - 1]);
 
     // Create or get conversation
@@ -284,9 +322,9 @@ export async function POST(req: Request) {
       // Save the latest user message
       const lastMessage = messages[messages.length - 1];
       if (lastMessage.role === 'user') {
-        const userMessageContent = Array.isArray(lastMessage.parts)
-          ? lastMessage.parts.map((p: { text?: string }) => p.text).join('')
-          : lastMessage.content;
+        const userMessageContent: string = Array.isArray(lastMessage.parts)
+          ? lastMessage.parts.map((p: { text?: string }) => p.text || '').join('')
+          : (lastMessage.content || '');
 
         await saveChatMessage({
           conversation_id: conversationId,
@@ -298,135 +336,37 @@ export async function POST(req: Request) {
       }
     }
 
-    // Convert UIMessages to ModelMessages for SDK 5
-    let modelMessages = convertToModelMessages(messages);
-
-    // PHASE 1: Execute tools if needed (non-streaming)
-    console.log('🔧 Phase 1: Checking for tool execution...');
-    const systemPrompt = getSystemPrompt(); // Get current date info
-    const toolResult = await generateText({
-      model: openai('gpt-4o'),
-      messages: modelMessages,
+    // Convert UI messages and stream the response with tools (SDK 5)
+    const systemPrompt = getSystemPrompt();
+    const result = await streamText({
+      model: openai(models.default),
+      messages: convertToModelMessages(messages as any),
       system: systemPrompt,
       tools,
       temperature: 0.8,
-    });
-
-    console.log('📊 Tool result steps:', toolResult.steps.length);
-    console.log('📊 Finish reason:', toolResult.finishReason);
-    console.log('📊 Text generated:', toolResult.text?.substring(0, 100) || 'none');
-
-    // Check if any tools were executed
-    const hadToolExecution = toolResult.steps.some(step =>
-      'toolCalls' in step && step.toolCalls && step.toolCalls.length > 0
-    );
-
-    let shouldStreamNewResponse = true;
-
-    if (hadToolExecution) {
-      console.log('✅ Tools were executed, forcing continuation...');
-
-      // Use the responseMessages from the tool execution result
-      // This properly includes tool calls and results in the right format
-      if (toolResult.responseMessages && toolResult.responseMessages.length > 0) {
-        modelMessages = [...modelMessages, ...toolResult.responseMessages];
-        console.log('📝 Added', toolResult.responseMessages.length, 'response messages');
-      }
-
-      // If no text was generated after tool execution, force continuation
-      if (!toolResult.text || toolResult.text.trim().length === 0) {
-        modelMessages.push({
-          role: 'user',
-          content: 'Please continue the conversation based on the tool results.',
-        });
-        console.log('🔄 Added continuation prompt - will generate in Phase 2');
-      } else {
-        console.log('✅ Text was already generated in Phase 1, will stream it');
-        shouldStreamNewResponse = false;
-      }
-
-      console.log('🔄 Updated messages count:', modelMessages.length);
-    }
-
-    // Link lead to conversation if one was created
-    if (conversationId && hadToolExecution && toolResult.responseMessages) {
-      for (const msg of toolResult.responseMessages) {
-        if (msg.role === 'tool' && msg.content) {
-          for (const content of msg.content) {
-            if (content.type === 'tool-result') {
-              try {
-                const result = JSON.parse(content.result as string);
-                if (result.lead_id) {
-                  await updateConversationLead(conversationId, result.lead_id);
-                  console.log('🔗 Linked lead to conversation');
-                }
-              } catch {
-                // Not JSON, ignore
-              }
-            }
-          }
-        }
-      }
-    }
-
-    // PHASE 2: Stream the response (with or without tool execution)
-    console.log('💬 Phase 2: Streaming final response...');
-
-    // If we already have text from Phase 1 and it's complete, return it directly
-    if (!shouldStreamNewResponse && hadToolExecution) {
-      console.log('🎯 Returning Phase 1 result as stream');
-
-      // Save AI response to DB
-      if (conversationId && toolResult.text) {
-        await saveChatMessage({
-          conversation_id: conversationId,
-          role: 'assistant',
-          content: toolResult.text,
-          metadata: {
-            phase: 1,
-            tool_calls: JSON.stringify(toolResult.steps)
-          }
-        });
-        console.log('💾 AI response (Phase 1) saved to DB');
-      }
-
-      return toolResult.toUIMessageStreamResponse({
-        originalMessages: messages,
-      });
-    }
-
-    // Otherwise, generate a new streaming response
-    console.log('🎯 Generating new streaming response');
-    const result = await streamText({
-      model: openai('gpt-4o'),
-      messages: modelMessages,
-      system: systemPrompt,
-      // Only allow tools if we didn't already execute tools in Phase 1
-      // This prevents infinite tool calling loops when forcing continuation
-      tools: hadToolExecution ? undefined : tools,
-      temperature: 0.8,
-      maxSteps: hadToolExecution ? 1 : 2, // No tool calls if we already executed in Phase 1
+      stopWhen: stepCountIs(10), // Allow up to 10 steps before stopping
       onFinish: async (event) => {
-        // Save AI response after streaming completes
         if (conversationId && event.text) {
           await saveChatMessage({
             conversation_id: conversationId,
             role: 'assistant',
             content: event.text,
             metadata: {
-              phase: 2,
               finish_reason: event.finishReason,
-              usage: event.usage
+              usage: event.usage,
+              steps: event.steps?.length || 0
             }
           });
-          console.log('💾 AI response (Phase 2) saved to DB:', event.text.substring(0, 100));
+          console.log('💾 AI response saved to DB', `(${event.text.substring(0, 80)}...)`);
+        } else if (conversationId) {
+          console.log('⚠️ No text generated after', event.steps?.length || 0, 'steps');
         }
       }
     });
 
-    return result.toUIMessageStreamResponse({
-      originalMessages: messages,
-    });
+    // Don't pass originalMessages - let SDK 5 handle message construction
+    // This avoids tool-call conversion errors on subsequent requests
+    return result.toUIMessageStreamResponse();
   } catch (error) {
     console.error('❌ Chat error:', error);
 

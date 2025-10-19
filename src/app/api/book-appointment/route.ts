@@ -1,10 +1,27 @@
-import { openai } from '@ai-sdk/openai';
+import { openai, models } from '@/lib/ai/provider';
 import { streamText, tool, convertToModelMessages } from 'ai';
-import { z } from 'zod/v3';
+import { z } from 'zod';
 import { createCalendarEvent } from '@/lib/db-operations';
 import type { CalendarEvent } from '@/lib/types';
 
 export const runtime = 'edge';
+// Request validation
+const MessagePartSchema = z.object({
+  type: z.string().optional(),
+  text: z.string().optional(),
+});
+
+const MessageSchema = z.object({
+  id: z.string().optional(),
+  role: z.enum(['user', 'assistant', 'system']).optional(),
+  content: z.string().optional(),
+  parts: z.array(MessagePartSchema).optional(),
+});
+
+const BookAppointmentRequestSchema = z.object({
+  messages: z.array(MessageSchema).min(1),
+  ownerId: z.string(),
+});
 
 interface AppointmentData {
   visitor_name: string;
@@ -30,11 +47,11 @@ async function createAppointment(appointmentData: AppointmentData, ownerId: stri
 }
 
 export async function POST(req: Request) {
-  const { messages, ownerId } = await req.json();
+  const { messages, ownerId } = BookAppointmentRequestSchema.parse(await req.json());
   const today = new Date().toISOString().split('T')[0];
 
   const result = streamText({
-    model: openai('gpt-4o-mini'),
+    model: openai(models.fast),
     messages: convertToModelMessages(messages),
     system: `You are a friendly appointment booking assistant for Jorge at Boston Builders AI.
 
