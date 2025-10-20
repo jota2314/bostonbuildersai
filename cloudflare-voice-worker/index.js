@@ -5,27 +5,31 @@
 
 const OPENAI_REALTIME_MODEL = 'gpt-4o-realtime-preview-2024-10-01';
 
-const SYSTEM_INSTRUCTIONS = `You are Jorge's AI assistant calling to schedule an interview meeting.
+const SYSTEM_INSTRUCTIONS = `You are Jorge's AI assistant calling to schedule an interview meeting and qualify business leads.
 
 Your greeting: "Hi, I'm George Assistant, and I'm here to schedule an interview with you. Let's start."
 
 Your role:
 1. Greet the person warmly with the greeting above
-2. Ask when they would be available for a meeting with Jorge
-3. Suggest some available time slots (weekdays 9 AM - 5 PM)
-4. Confirm the date and time
-5. Use the book_meeting tool to schedule it
-6. Confirm the booking and thank them
+2. Ask a few quick qualifying questions:
+   - What type of business do they run? (e.g., roofing, plumbing, construction)
+   - What's their approximate annual revenue? (rough ballpark is fine)
+   - Any specific challenges or goals they want to discuss with Jorge?
+3. Ask when they would be available for a meeting with Jorge
+4. Suggest some available time slots (weekdays 9 AM - 5 PM)
+5. Confirm the date and time
+6. Use the book_meeting tool to schedule it (include all the info you gathered)
+7. Confirm the booking and thank them
 
 Guidelines:
-- Be friendly, professional, and concise
-- Speak naturally like a human assistant
-- If they're busy, offer to call back later
-- Keep the call under 2 minutes if possible
+- Be friendly, professional, and conversational (not interrogative)
+- Keep questions natural and flowing
+- If they hesitate on revenue, say "just a rough estimate is fine"
+- Keep the call under 3 minutes
 - Today's date is {{TODAY_DATE}}
 
 Available function:
-- book_meeting: Books a meeting in Jorge's calendar
+- book_meeting: Books a meeting in Jorge's calendar with all the business context
 `;
 
 export default {
@@ -102,7 +106,7 @@ async function handleWebSocketSession(twilioWs, env) {
             {
               type: 'function',
               name: 'book_meeting',
-              description: 'Books a meeting in the calendar after confirming date and time with the person',
+              description: 'Books a meeting in the calendar with all business qualification information',
               parameters: {
                 type: 'object',
                 properties: {
@@ -116,10 +120,26 @@ async function handleWebSocketSession(twilioWs, env) {
                   },
                   duration_minutes: {
                     type: 'number',
-                    description: 'Duration of the meeting in minutes (default 60)',
+                    description: 'Duration of the meeting in minutes (default 30)',
+                  },
+                  contact_name: {
+                    type: 'string',
+                    description: 'Name of the person you spoke with',
+                  },
+                  business_type: {
+                    type: 'string',
+                    description: 'Type of business (e.g., roofing, plumbing, construction, HVAC)',
+                  },
+                  annual_revenue: {
+                    type: 'string',
+                    description: 'Approximate annual revenue (e.g., "$500K", "$1M-2M", "$5M+")',
+                  },
+                  notes: {
+                    type: 'string',
+                    description: 'Any challenges, goals, or other important context discussed',
                   },
                 },
-                required: ['date', 'time'],
+                required: ['date', 'time', 'business_type'],
               },
             },
           ],
@@ -165,7 +185,7 @@ async function handleWebSocketSession(twilioWs, env) {
             if (message.name === 'book_meeting') {
               try {
                 const args = JSON.parse(message.arguments);
-                await handleBookMeeting(args, leadId, env);
+                await handleBookMeeting(args, leadId, leadName, env);
                 meetingScheduled = true;
 
                 // Send response back to OpenAI
@@ -289,10 +309,10 @@ async function handleWebSocketSession(twilioWs, env) {
 }
 
 // Helper function to book a meeting
-async function handleBookMeeting(args, leadId, env) {
+async function handleBookMeeting(args, leadId, leadName, env) {
   console.log('📅 Booking meeting:', args);
 
-  const durationMinutes = args.duration_minutes || 60;
+  const durationMinutes = args.duration_minutes || 30; // Default 30 minutes
   const startTime = args.time;
 
   // Calculate end time
@@ -300,6 +320,22 @@ async function handleBookMeeting(args, leadId, env) {
   const endMinutes = minutes + durationMinutes;
   const endHours = hours + Math.floor(endMinutes / 60);
   const endTime = `${String(endHours % 24).padStart(2, '0')}:${String(endMinutes % 60).padStart(2, '0')}`;
+
+  // Build description with all business context
+  const contactName = args.contact_name || leadName || 'Prospect';
+  const businessType = args.business_type || 'Unknown business';
+  const revenue = args.annual_revenue || 'Not disclosed';
+  const notes = args.notes || 'No additional notes';
+
+  const description = `Interview with ${contactName}
+
+Business: ${businessType}
+Annual Revenue: ${revenue}
+
+Notes:
+${notes}
+
+Lead ID: ${leadId || 'N/A'}`;
 
   // Call your Next.js API to book the meeting
   const response = await fetch(`${env.NEXT_JS_API_URL}/api/book-meeting`, {
@@ -310,10 +346,15 @@ async function handleBookMeeting(args, leadId, env) {
     },
     body: JSON.stringify({
       leadId,
+      contactName,
+      businessType,
+      annualRevenue: revenue,
+      notes,
       date: args.date,
       startTime: startTime,
       endTime: endTime,
       userId: env.USER_ID,
+      description: description,
     }),
   });
 
