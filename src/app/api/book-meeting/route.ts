@@ -15,7 +15,18 @@ export async function POST(req: Request) {
       );
     }
 
-    const { leadId, date, startTime, endTime, userId } = await req.json();
+    const {
+      leadId,
+      contactName,
+      businessType,
+      annualRevenue,
+      notes,
+      date,
+      startTime,
+      endTime,
+      userId,
+      description
+    } = await req.json();
 
     // Validate required fields
     if (!date || !startTime || !userId) {
@@ -25,10 +36,19 @@ export async function POST(req: Request) {
       );
     }
 
+    // Create title with contact name if available
+    const title = contactName
+      ? `Interview - ${contactName}`
+      : 'Interview Meeting';
+
+    // Use custom description if provided, otherwise build one
+    const eventDescription = description ||
+      (leadId ? `Scheduled via AI call - Lead ID: ${leadId}` : 'Scheduled via AI call');
+
     // Create calendar event
     const eventData: CalendarEvent = {
-      title: 'Interview Meeting',
-      description: leadId ? `Scheduled via AI call - Lead ID: ${leadId}` : 'Scheduled via AI call',
+      title,
+      description: eventDescription,
       event_date: date,
       start_time: startTime,
       end_time: endTime || null,
