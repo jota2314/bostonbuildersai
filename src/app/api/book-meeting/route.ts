@@ -18,9 +18,6 @@ export async function POST(req: Request) {
     const {
       leadId,
       contactName,
-      businessType,
-      annualRevenue,
-      notes,
       date,
       startTime,
       endTime,
