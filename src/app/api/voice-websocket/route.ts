@@ -66,7 +66,7 @@ export async function handleTwilioWebSocket(twilioWs: WebSocket, params: StreamP
   let openAiWs: WebSocket | null = null;
   let callSid = '';
   let streamSid = '';
-  const { leadId, leadName = 'there' } = params;
+  const { leadId } = params;
   let transcript = '';
   let meetingScheduled = false;
 

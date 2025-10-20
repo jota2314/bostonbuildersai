@@ -26,7 +26,7 @@ export default function TestTwilioPage() {
 
       const data = await response.json();
       setResult(data);
-    } catch (error) {
+    } catch {
       setResult({ error: 'Failed to make call' });
     } finally {
       setLoading(false);
@@ -101,7 +101,7 @@ export default function TestTwilioPage() {
           <ol className="space-y-2 text-slate-300">
             <li>1. Enter a valid phone number in E.164 format (+15551234567)</li>
             <li>2. Optionally customize the message</li>
-            <li>3. Click "Make Test Call"</li>
+            <li>3. Click &quot;Make Test Call&quot;</li>
             <li>4. Wait for the call to come through!</li>
           </ol>
 
