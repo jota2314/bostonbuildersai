@@ -60,7 +60,7 @@ export async function POST(req: Request) {
 }
 
 // This will be called by Twilio's WebSocket connection
-export async function handleTwilioWebSocket(twilioWs: WebSocket, params: StreamParameters) {
+async function handleTwilioWebSocket(twilioWs: WebSocket, params: StreamParameters) {
   console.log('🎤 New Twilio WebSocket connection');
 
   let openAiWs: WebSocket | null = null;
