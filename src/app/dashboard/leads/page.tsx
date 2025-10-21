@@ -89,7 +89,7 @@ export default function LeadsPage() {
 
   const handleStatusChange = async (leadId: string, newStatus: string) => {
     try {
-      await updateLead(leadId, { status: newStatus as any });
+      await updateLead(leadId, { status: newStatus as Lead['status'] });
     } catch (error) {
       console.error('Failed to update status:', error);
     }
@@ -239,7 +239,6 @@ export default function LeadsPage() {
         ) : viewMode === 'cards' ? (
           <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-4 md:gap-6">
             {filteredLeads.map((lead) => {
-              const StatusIcon = statusConfig[lead.status].icon;
               return (
                 <div
                   key={lead.id}

@@ -14,7 +14,6 @@ import {
   DollarSign,
   Calendar,
   User,
-  Edit,
 } from 'lucide-react';
 import type { Lead } from '@/store/useLeadsStore';
 
@@ -44,6 +43,7 @@ export default function LeadDetailPage({ params }: { params: { id: string } }) {
   useEffect(() => {
     fetchUser();
     fetchLead();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [params.id]);
 
   const fetchUser = async () => {

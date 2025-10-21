@@ -71,14 +71,17 @@ export async function sendSMS({ to, body, leadId }: SendSMSParams) {
     }
 
     return { success: true, data: message };
-  } catch (error: any) {
+  } catch (error) {
     console.error('Failed to send SMS:', error);
-    console.error('Error code:', error.code);
-    console.error('Error details:', error.moreInfo);
+    const errorCode = error && typeof error === 'object' && 'code' in error ? error.code : 'unknown';
+    const errorMoreInfo = error && typeof error === 'object' && 'moreInfo' in error ? error.moreInfo : '';
+    console.error('Error code:', errorCode);
+    console.error('Error details:', errorMoreInfo);
 
     // Log failed SMS to database
     if (leadId) {
       const supabase = await createClient();
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
       await supabase.from('communications').insert({
         lead_id: leadId,
         type: 'sms',
@@ -87,11 +90,12 @@ export async function sendSMS({ to, body, leadId }: SendSMSParams) {
         from_address: twilioPhoneNumber || '',
         to_address: to,
         status: 'failed',
-        error_message: `${error.message} (Code: ${error.code || 'unknown'})`,
+        error_message: `${errorMessage} (Code: ${errorCode})`,
       });
     }
 
-    return { success: false, error: `${error.message} ${error.code ? `(Code: ${error.code})` : ''}` };
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+    return { success: false, error: `${errorMessage} ${errorCode !== 'unknown' ? `(Code: ${errorCode})` : ''}` };
   }
 }
 
@@ -123,9 +127,10 @@ export async function logInboundSMS({
     if (error) throw error;
 
     return { success: true };
-  } catch (error: any) {
+  } catch (error) {
     console.error('Failed to log inbound SMS:', error);
-    return { success: false, error: error.message };
+    const message = error instanceof Error ? error.message : 'Unknown error';
+    return { success: false, error: message };
   }
 }
 
@@ -143,8 +148,9 @@ export async function getSMSHistory(leadId: string) {
     if (error) throw error;
 
     return { success: true, data };
-  } catch (error: any) {
+  } catch (error) {
     console.error('Failed to get SMS history:', error);
-    return { success: false, error: error.message };
+    const message = error instanceof Error ? error.message : 'Unknown error';
+    return { success: false, error: message };
   }
 }

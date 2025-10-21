@@ -61,9 +61,10 @@ export async function sendEmail({ to, subject, html, leadId }: SendEmailParams) 
     }
 
     return { success: true, data };
-  } catch (error: any) {
+  } catch (error) {
     console.error('Failed to send email:', error);
-    return { success: false, error: error.message };
+    const message = error instanceof Error ? error.message : 'Unknown error';
+    return { success: false, error: message };
   }
 }
 
@@ -99,8 +100,9 @@ export async function logInboundEmail({
     if (error) throw error;
 
     return { success: true };
-  } catch (error: any) {
+  } catch (error) {
     console.error('Failed to log inbound email:', error);
-    return { success: false, error: error.message };
+    const message = error instanceof Error ? error.message : 'Unknown error';
+    return { success: false, error: message };
   }
 }

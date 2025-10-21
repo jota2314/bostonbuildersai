@@ -44,6 +44,7 @@ export default function CommunicationHistory({
 
   useEffect(() => {
     fetchCommunications();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [leadId]);
 
   const fetchCommunications = async () => {
@@ -92,8 +93,9 @@ export default function CommunicationHistory({
       } else {
         alert(`Failed to send email: ${result.error}`);
       }
-    } catch (error: any) {
-      alert(`Error: ${error.message}`);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Unknown error';
+      alert(`Error: ${message}`);
     } finally {
       setSendingEmail(false);
     }
@@ -132,8 +134,9 @@ export default function CommunicationHistory({
       } else {
         alert(`Failed to send SMS: ${result.error}`);
       }
-    } catch (error: any) {
-      alert(`Error: ${error.message}`);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Unknown error';
+      alert(`Error: ${message}`);
     } finally {
       setSendingSMS(false);
     }
