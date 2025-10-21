@@ -26,7 +26,6 @@ export default function CommunicationHistory({
   leadId,
   leadEmail,
   leadPhone,
-  leadName,
 }: CommunicationHistoryProps) {
   const [communications, setCommunications] = useState<Communication[]>([]);
   const [loading, setLoading] = useState(true);
