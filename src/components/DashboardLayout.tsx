@@ -51,16 +51,15 @@ export default function DashboardLayout({
       >
         <div className="flex flex-col h-full">
           {/* Logo */}
-          <div className="flex items-center justify-between h-24 px-6 border-b border-slate-700">
-            <Link href="/" className="flex items-center space-x-3">
+          <div className="flex items-center justify-center h-24 px-6 border-b border-slate-700">
+            <Link href="/" className="flex items-center justify-center w-full">
               <Image
                 src="/logo.png"
                 alt="Boston Builders AI Logo"
-                width={50}
-                height={50}
+                width={80}
+                height={80}
                 className="object-contain"
               />
-              <span className="text-white font-bold text-lg">BBAI</span>
             </Link>
             <button
               onClick={() => setSidebarOpen(false)}
