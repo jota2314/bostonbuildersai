@@ -38,8 +38,8 @@ export default function ChatWidget() {
     if (lastMessage.role === 'assistant' && status === 'ready') {
       // Extract text from message parts
       const text = lastMessage.parts
-        ?.filter((part: any) => part.type === 'text')
-        .map((part: any) => part.text)
+        ?.filter((part: { type: string; text?: string }) => part.type === 'text')
+        .map((part: { type: string; text?: string }) => part.text)
         .join(' ');
 
       if (text && text.trim()) {
@@ -119,7 +119,7 @@ export default function ChatWidget() {
   // Initialize speech recognition
   useEffect(() => {
     if (typeof window !== 'undefined') {
-      const SpeechRecognition = window.SpeechRecognition || (window as any).webkitSpeechRecognition;
+      const SpeechRecognition = window.SpeechRecognition || (window as typeof window & { webkitSpeechRecognition?: typeof window.SpeechRecognition }).webkitSpeechRecognition;
       if (SpeechRecognition) {
         const recognition = new SpeechRecognition();
         recognition.continuous = false;
@@ -132,7 +132,7 @@ export default function ChatWidget() {
           setIsRecording(false);
         };
 
-        recognition.onerror = (event: any) => {
+        recognition.onerror = (event: SpeechRecognitionErrorEvent) => {
           console.error('Speech recognition error:', event.error);
           setIsRecording(false);
         };

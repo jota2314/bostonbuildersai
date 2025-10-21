@@ -6,9 +6,9 @@ interface SpeechRecognition extends EventTarget {
   start(): void;
   stop(): void;
   abort(): void;
-  onerror: ((this: SpeechRecognition, ev: SpeechRecognitionErrorEvent) => any) | null;
-  onresult: ((this: SpeechRecognition, ev: SpeechRecognitionEvent) => any) | null;
-  onend: ((this: SpeechRecognition, ev: Event) => any) | null;
+  onerror: ((this: SpeechRecognition, ev: SpeechRecognitionErrorEvent) => void) | null;
+  onresult: ((this: SpeechRecognition, ev: SpeechRecognitionEvent) => void) | null;
+  onend: ((this: SpeechRecognition, ev: Event) => void) | null;
 }
 
 interface SpeechRecognitionErrorEvent extends Event {
@@ -39,12 +39,12 @@ interface SpeechRecognitionAlternative {
   confidence: number;
 }
 
-declare var SpeechRecognition: {
+declare const SpeechRecognition: {
   prototype: SpeechRecognition;
   new(): SpeechRecognition;
 };
 
-declare var webkitSpeechRecognition: {
+declare const webkitSpeechRecognition: {
   prototype: SpeechRecognition;
   new(): SpeechRecognition;
 };
