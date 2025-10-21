@@ -1,5 +1,5 @@
 import twilio from 'twilio';
-import { createClient } from '@/lib/supabase/server';
+import { createClient } from '@supabase/supabase-js';
 
 const accountSid = process.env.TWILIO_ACCOUNT_SID;
 const authToken = process.env.TWILIO_AUTH_TOKEN;
@@ -50,7 +50,10 @@ export async function sendSMS({ to, body, leadId }: SendSMSParams) {
 
     // Log successful SMS to database
     if (leadId) {
-      const supabase = await createClient();
+      const supabase = createClient(
+        process.env.NEXT_PUBLIC_SUPABASE_URL!,
+        process.env.SUPABASE_SERVICE_ROLE_KEY!
+      );
       await supabase.from('communications').insert({
         lead_id: leadId,
         type: 'sms',
@@ -80,7 +83,10 @@ export async function sendSMS({ to, body, leadId }: SendSMSParams) {
 
     // Log failed SMS to database
     if (leadId) {
-      const supabase = await createClient();
+      const supabase = createClient(
+        process.env.NEXT_PUBLIC_SUPABASE_URL!,
+        process.env.SUPABASE_SERVICE_ROLE_KEY!
+      );
       const errorMessage = error instanceof Error ? error.message : 'Unknown error';
       await supabase.from('communications').insert({
         lead_id: leadId,
@@ -111,7 +117,10 @@ export async function logInboundSMS({
   messageSid?: string;
 }) {
   try {
-    const supabase = await createClient();
+    const supabase = createClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.SUPABASE_SERVICE_ROLE_KEY!
+    );
 
     const { error } = await supabase.from('communications').insert({
       lead_id: leadId,
