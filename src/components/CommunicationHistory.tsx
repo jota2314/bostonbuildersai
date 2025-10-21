@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState, useRef } from 'react';
-import { Mail, MessageSquare, Send } from 'lucide-react';
+import { Mail, MessageSquare, Send, Phone } from 'lucide-react';
 
 interface Communication {
   id: string;
@@ -26,10 +26,12 @@ export default function CommunicationHistory({
   leadId,
   leadEmail,
   leadPhone,
+  leadName,
 }: CommunicationHistoryProps) {
   const [communications, setCommunications] = useState<Communication[]>([]);
   const [loading, setLoading] = useState(true);
   const [sending, setSending] = useState(false);
+  const [calling, setCalling] = useState(false);
   const [messageType, setMessageType] = useState<'sms' | 'email'>(leadPhone ? 'sms' : 'email');
 
   // Message input
@@ -190,38 +192,91 @@ export default function CommunicationHistory({
     }
   };
 
+  const handleCall = async () => {
+    if (!leadPhone) {
+      alert('This lead does not have a phone number');
+      return;
+    }
+
+    if (!confirm(`Call ${leadName} at ${leadPhone}?`)) {
+      return;
+    }
+
+    try {
+      setCalling(true);
+      const response = await fetch('/api/initiate-call', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          phoneNumber: leadPhone,
+          leadId,
+          leadName,
+        }),
+      });
+
+      const result = await response.json();
+
+      if (result.success) {
+        alert(`Call initiated successfully! Call SID: ${result.callSid}`);
+        // Optionally refresh communications to show the call
+        fetchCommunications();
+      } else {
+        alert(`Failed to initiate call: ${result.error}`);
+      }
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Unknown error';
+      alert(`Error: ${message}`);
+    } finally {
+      setCalling(false);
+    }
+  };
+
   return (
     <div className="bg-slate-800 rounded-lg border border-slate-700 flex flex-col h-[600px]">
       {/* Header */}
       <div className="p-4 border-b border-slate-700 flex items-center justify-between">
         <h3 className="text-xl font-bold text-white">Messages</h3>
 
-        {/* Type Toggle */}
-        <div className="flex items-center gap-2 bg-slate-700 rounded-lg p-1">
+        <div className="flex items-center gap-3">
+          {/* Call Button */}
           {leadPhone && (
             <button
-              onClick={() => setMessageType('sms')}
+              onClick={handleCall}
+              disabled={calling}
+              className="flex items-center gap-2 px-4 py-2 bg-purple-500 hover:bg-purple-600 text-white rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              <Phone className="w-4 h-4" />
+              {calling ? 'Calling...' : 'Call'}
+            </button>
+          )}
+
+          {/* Type Toggle */}
+          <div className="flex items-center gap-2 bg-slate-700 rounded-lg p-1">
+            {leadPhone && (
+              <button
+                onClick={() => setMessageType('sms')}
+                className={`flex items-center gap-2 px-3 py-1.5 rounded-md transition-colors text-sm ${
+                  messageType === 'sms'
+                    ? 'bg-green-500 text-white'
+                    : 'text-slate-400 hover:text-white'
+                }`}
+              >
+                <MessageSquare className="w-4 h-4" />
+                SMS
+              </button>
+            )}
+            <button
+              onClick={() => setMessageType('email')}
               className={`flex items-center gap-2 px-3 py-1.5 rounded-md transition-colors text-sm ${
-                messageType === 'sms'
-                  ? 'bg-green-500 text-white'
+                messageType === 'email'
+                  ? 'bg-blue-500 text-white'
                   : 'text-slate-400 hover:text-white'
               }`}
             >
-              <MessageSquare className="w-4 h-4" />
-              SMS
+              <Mail className="w-4 h-4" />
+              Email
             </button>
-          )}
-          <button
-            onClick={() => setMessageType('email')}
-            className={`flex items-center gap-2 px-3 py-1.5 rounded-md transition-colors text-sm ${
-              messageType === 'email'
-                ? 'bg-blue-500 text-white'
-                : 'text-slate-400 hover:text-white'
-            }`}
-          >
-            <Mail className="w-4 h-4" />
-            Email
-          </button>
+          </div>
         </div>
       </div>
 
