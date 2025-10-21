@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
 import DashboardLayout from '@/components/DashboardLayout';
 import { useLeadsStore } from '@/store/useLeadsStore';
@@ -39,6 +40,8 @@ const priorityConfig = {
 };
 
 export default function LeadsPage() {
+  const router = useRouter();
+
   // Zustand store
   const {
     loading,
@@ -240,7 +243,8 @@ export default function LeadsPage() {
               return (
                 <div
                   key={lead.id}
-                  className="bg-slate-800 rounded-lg p-4 md:p-6 border border-slate-700 hover:border-primary/50 transition-all"
+                  onClick={() => router.push(`/dashboard/leads/${lead.id}`)}
+                  className="bg-slate-800 rounded-lg p-4 md:p-6 border border-slate-700 hover:border-primary/50 transition-all cursor-pointer"
                 >
                   {/* Header */}
                   <div className="flex items-start justify-between gap-3 mb-4">
@@ -254,6 +258,7 @@ export default function LeadsPage() {
                     <select
                       value={lead.status}
                       onChange={(e) => handleStatusChange(lead.id, e.target.value)}
+                      onClick={(e) => e.stopPropagation()}
                       className={`flex-shrink-0 px-2 md:px-3 py-1.5 md:py-1 ${statusConfig[lead.status].color} text-white text-xs md:text-sm font-medium rounded-full border-none focus:outline-none focus:ring-2 focus:ring-primary cursor-pointer min-h-[36px] md:min-h-0`}
                     >
                       {Object.entries(statusConfig).map(([key, config]) => (
@@ -283,6 +288,7 @@ export default function LeadsPage() {
                       </div>
                       <a
                         href={`mailto:${lead.email}`}
+                        onClick={(e) => e.stopPropagation()}
                         className="md:opacity-0 md:group-hover:opacity-100 transition-opacity px-3 py-2 bg-primary/10 hover:bg-primary/20 text-primary rounded text-xs font-medium min-h-[36px] flex items-center flex-shrink-0"
                       >
                         Email
@@ -296,6 +302,7 @@ export default function LeadsPage() {
                         </div>
                         <a
                           href={`tel:${lead.phone}`}
+                          onClick={(e) => e.stopPropagation()}
                           className="md:opacity-0 md:group-hover:opacity-100 transition-opacity px-3 py-2 bg-green-500/10 hover:bg-green-500/20 text-green-400 rounded text-xs font-medium min-h-[36px] flex items-center flex-shrink-0"
                         >
                           Call
@@ -343,7 +350,10 @@ export default function LeadsPage() {
                         </span>
                       )}
                       <button
-                        onClick={() => handleDeleteLead(lead.id, lead.company_name)}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleDeleteLead(lead.id, lead.company_name);
+                        }}
                         className="p-2 bg-red-500/10 hover:bg-red-500/20 text-red-400 rounded transition-colors"
                         title="Delete lead"
                       >
@@ -408,7 +418,11 @@ export default function LeadsPage() {
                 </thead>
                 <tbody className="divide-y divide-slate-700">
                   {filteredLeads.map((lead) => (
-                    <tr key={lead.id} className="hover:bg-slate-750 transition-colors">
+                    <tr
+                      key={lead.id}
+                      onClick={() => router.push(`/dashboard/leads/${lead.id}`)}
+                      className="hover:bg-slate-750 transition-colors cursor-pointer"
+                    >
                       <td className="px-4 md:px-6 py-3 md:py-4">
                         <div className="text-sm font-medium text-white whitespace-nowrap">{lead.company_name}</div>
                         <div className="text-xs text-slate-400">{lead.location || 'N/A'}</div>
@@ -426,6 +440,7 @@ export default function LeadsPage() {
                         <select
                           value={lead.status}
                           onChange={(e) => handleStatusChange(lead.id, e.target.value)}
+                          onClick={(e) => e.stopPropagation()}
                           className={`px-2 py-1.5 ${statusConfig[lead.status].color} text-white text-xs font-medium rounded border-none focus:outline-none focus:ring-2 focus:ring-primary cursor-pointer min-h-[36px]`}
                         >
                           {Object.entries(statusConfig).map(([key, config]) => (
@@ -447,6 +462,7 @@ export default function LeadsPage() {
                         <div className="flex justify-end gap-2">
                           <a
                             href={`mailto:${lead.email}`}
+                            onClick={(e) => e.stopPropagation()}
                             className="p-2.5 bg-primary/10 hover:bg-primary/20 text-primary rounded transition-colors min-h-[40px] min-w-[40px] flex items-center justify-center"
                             title="Send email"
                           >
@@ -455,6 +471,7 @@ export default function LeadsPage() {
                           {lead.phone && (
                             <a
                               href={`tel:${lead.phone}`}
+                              onClick={(e) => e.stopPropagation()}
                               className="p-2.5 bg-green-500/10 hover:bg-green-500/20 text-green-400 rounded transition-colors min-h-[40px] min-w-[40px] flex items-center justify-center"
                               title="Call"
                             >
@@ -462,7 +479,10 @@ export default function LeadsPage() {
                             </a>
                           )}
                           <button
-                            onClick={() => handleDeleteLead(lead.id, lead.company_name)}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleDeleteLead(lead.id, lead.company_name);
+                            }}
                             className="p-2.5 bg-red-500/10 hover:bg-red-500/20 text-red-400 rounded transition-colors min-h-[40px] min-w-[40px] flex items-center justify-center"
                             title="Delete lead"
                           >
