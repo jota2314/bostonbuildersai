@@ -235,46 +235,50 @@ export default function CommunicationHistory({
     <div className="bg-slate-800 rounded-lg border border-slate-700 flex flex-col h-[600px]">
       {/* Header */}
       <div className="p-4 border-b border-slate-700 flex items-center justify-between">
-        <h3 className="text-xl font-bold text-white">Messages</h3>
+        <h3 className="text-xl font-bold text-white hidden md:block">Messages</h3>
+        <h3 className="text-lg font-bold text-white md:hidden">Chat</h3>
 
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2">
           {/* Call Button */}
           {leadPhone && (
             <button
               onClick={handleCall}
               disabled={calling}
-              className="flex items-center gap-2 px-4 py-2 bg-purple-500 hover:bg-purple-600 text-white rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              title="Call"
+              className="flex items-center gap-2 px-3 py-2 md:px-4 md:py-2 bg-purple-500 hover:bg-purple-600 text-white rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             >
               <Phone className="w-4 h-4" />
-              {calling ? 'Calling...' : 'Call'}
+              <span className="hidden md:inline">{calling ? 'Calling...' : 'Call'}</span>
             </button>
           )}
 
           {/* Type Toggle */}
-          <div className="flex items-center gap-2 bg-slate-700 rounded-lg p-1">
+          <div className="flex items-center gap-1 bg-slate-700 rounded-lg p-1">
             {leadPhone && (
               <button
                 onClick={() => setMessageType('sms')}
-                className={`flex items-center gap-2 px-3 py-1.5 rounded-md transition-colors text-sm ${
+                title="SMS"
+                className={`flex items-center gap-1.5 px-2 py-1.5 md:px-3 md:py-1.5 rounded-md transition-colors text-sm ${
                   messageType === 'sms'
                     ? 'bg-green-500 text-white'
                     : 'text-slate-400 hover:text-white'
                 }`}
               >
                 <MessageSquare className="w-4 h-4" />
-                SMS
+                <span className="hidden md:inline">SMS</span>
               </button>
             )}
             <button
               onClick={() => setMessageType('email')}
-              className={`flex items-center gap-2 px-3 py-1.5 rounded-md transition-colors text-sm ${
+              title="Email"
+              className={`flex items-center gap-1.5 px-2 py-1.5 md:px-3 md:py-1.5 rounded-md transition-colors text-sm ${
                 messageType === 'email'
                   ? 'bg-blue-500 text-white'
                   : 'text-slate-400 hover:text-white'
               }`}
             >
               <Mail className="w-4 h-4" />
-              Email
+              <span className="hidden md:inline">Email</span>
             </button>
           </div>
         </div>
