@@ -4,6 +4,7 @@ import { createClient } from '@/lib/supabase/client';
 export interface Lead {
   id: string;
   created_at: string;
+  updated_at: string;
   company_name: string;
   contact_name: string;
   email: string;
