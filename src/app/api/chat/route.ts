@@ -70,7 +70,7 @@ async function saveLead(args: {
     source: 'ai_chat',
     status: 'new',
     priority: 'high',
-    user_id: null,
+    user_id: process.env.USER_ID || null, // Assign to Jorge by default
     consent_to_contact: args.consent_to_contact,
     consent_date: new Date().toISOString(),
     consent_ip_address: null, // We'll add IP capture later

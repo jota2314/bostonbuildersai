@@ -50,7 +50,7 @@ export async function POST(req: Request) {
       source,
       status: 'new',
       priority: 'medium',
-      user_id: null, // Public leads don't have a user_id initially
+      user_id: process.env.USER_ID || null, // Assign to Jorge by default
       consent_to_contact,
       consent_date: consent_date || null,
       consent_ip_address: consent_ip_address || null,
