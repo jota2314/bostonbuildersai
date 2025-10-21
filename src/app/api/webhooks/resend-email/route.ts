@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
+import { sendInboundMessageNotification } from '@/lib/notifications';
 
 export async function POST(request: NextRequest) {
   try {
@@ -65,6 +66,25 @@ export async function POST(request: NextRequest) {
             console.error('Error logging inbound email:', insertError);
           } else {
             console.log('Inbound email logged successfully for lead:', lead.id);
+
+            // Send email notification
+            const { data: fullLead } = await supabase
+              .from('leads')
+              .select('company_name, contact_name')
+              .eq('id', lead.id)
+              .single();
+
+            // Strip HTML tags for plain text body preview
+            const plainTextBody = html.replace(/<[^>]*>/g, '').substring(0, 500);
+
+            await sendInboundMessageNotification({
+              leadId: lead.id,
+              leadName: fullLead?.contact_name || fullLead?.company_name || 'Unknown Lead',
+              leadEmail: fromEmail,
+              messageType: 'email',
+              messageBody: plainTextBody,
+              messageSubject: subject,
+            });
           }
         } else {
           console.log('No lead found for email:', fromEmail);
