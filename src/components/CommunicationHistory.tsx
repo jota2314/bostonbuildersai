@@ -1,7 +1,7 @@
 'use client';
 
-import { useEffect, useState } from 'react';
-import { Mail, MessageSquare, Send, X } from 'lucide-react';
+import { useEffect, useState, useRef } from 'react';
+import { Mail, MessageSquare, Send } from 'lucide-react';
 
 interface Communication {
   id: string;
@@ -30,22 +30,28 @@ export default function CommunicationHistory({
 }: CommunicationHistoryProps) {
   const [communications, setCommunications] = useState<Communication[]>([]);
   const [loading, setLoading] = useState(true);
-  const [sendingEmail, setSendingEmail] = useState(false);
-  const [sendingSMS, setSendingSMS] = useState(false);
-  const [showEmailModal, setShowEmailModal] = useState(false);
-  const [showSMSModal, setShowSMSModal] = useState(false);
+  const [sending, setSending] = useState(false);
+  const [messageType, setMessageType] = useState<'sms' | 'email'>(leadPhone ? 'sms' : 'email');
 
-  // Email form
+  // Message input
+  const [messageBody, setMessageBody] = useState('');
   const [emailSubject, setEmailSubject] = useState('');
-  const [emailBody, setEmailBody] = useState('');
+  const [showSubject, setShowSubject] = useState(false);
 
-  // SMS form
-  const [smsBody, setSmsBody] = useState('');
+  const messagesEndRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     fetchCommunications();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [leadId]);
+
+  useEffect(() => {
+    scrollToBottom();
+  }, [communications]);
+
+  const scrollToBottom = () => {
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  };
 
   const fetchCommunications = async () => {
     try {
@@ -63,21 +69,34 @@ export default function CommunicationHistory({
     }
   };
 
+  const handleSendMessage = async () => {
+    if (!messageBody.trim()) {
+      alert('Please enter a message');
+      return;
+    }
+
+    if (messageType === 'email') {
+      await handleSendEmail();
+    } else {
+      await handleSendSMS();
+    }
+  };
+
   const handleSendEmail = async () => {
-    if (!emailSubject.trim() || !emailBody.trim()) {
-      alert('Please fill in both subject and message');
+    if (!messageBody.trim()) {
+      alert('Please enter a message');
       return;
     }
 
     try {
-      setSendingEmail(true);
+      setSending(true);
       const response = await fetch('/api/communications/send-email', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           to: leadEmail,
-          subject: emailSubject,
-          html: emailBody.replace(/\n/g, '<br>'),
+          subject: emailSubject.trim() || 'Message from Boston Builders AI',
+          html: messageBody.replace(/\n/g, '<br>'),
           leadId,
         }),
       });
@@ -85,11 +104,10 @@ export default function CommunicationHistory({
       const result = await response.json();
 
       if (result.success) {
+        setMessageBody('');
         setEmailSubject('');
-        setEmailBody('');
-        setShowEmailModal(false);
+        setShowSubject(false);
         fetchCommunications();
-        alert('Email sent successfully!');
       } else {
         alert(`Failed to send email: ${result.error}`);
       }
@@ -97,12 +115,12 @@ export default function CommunicationHistory({
       const message = error instanceof Error ? error.message : 'Unknown error';
       alert(`Error: ${message}`);
     } finally {
-      setSendingEmail(false);
+      setSending(false);
     }
   };
 
   const handleSendSMS = async () => {
-    if (!smsBody.trim()) {
+    if (!messageBody.trim()) {
       alert('Please enter a message');
       return;
     }
@@ -113,13 +131,13 @@ export default function CommunicationHistory({
     }
 
     try {
-      setSendingSMS(true);
+      setSending(true);
       const response = await fetch('/api/communications/send-sms', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           to: leadPhone,
-          message: smsBody,
+          message: messageBody,
           leadId,
         }),
       });
@@ -127,10 +145,8 @@ export default function CommunicationHistory({
       const result = await response.json();
 
       if (result.success) {
-        setSmsBody('');
-        setShowSMSModal(false);
+        setMessageBody('');
         fetchCommunications();
-        alert('SMS sent successfully!');
       } else {
         alert(`Failed to send SMS: ${result.error}`);
       }
@@ -138,222 +154,200 @@ export default function CommunicationHistory({
       const message = error instanceof Error ? error.message : 'Unknown error';
       alert(`Error: ${message}`);
     } finally {
-      setSendingSMS(false);
+      setSending(false);
     }
   };
 
-  const formatDate = (dateString: string) => {
+  const formatTime = (dateString: string) => {
     const date = new Date(dateString);
-    return new Intl.DateTimeFormat('en-US', {
-      month: 'short',
-      day: 'numeric',
-      year: 'numeric',
-      hour: 'numeric',
-      minute: 'numeric',
-    }).format(date);
+    const now = new Date();
+    const diffInHours = (now.getTime() - date.getTime()) / (1000 * 60 * 60);
+
+    if (diffInHours < 24) {
+      return new Intl.DateTimeFormat('en-US', {
+        hour: 'numeric',
+        minute: 'numeric',
+      }).format(date);
+    } else if (diffInHours < 168) { // Less than a week
+      return new Intl.DateTimeFormat('en-US', {
+        weekday: 'short',
+        hour: 'numeric',
+        minute: 'numeric',
+      }).format(date);
+    } else {
+      return new Intl.DateTimeFormat('en-US', {
+        month: 'short',
+        day: 'numeric',
+        hour: 'numeric',
+        minute: 'numeric',
+      }).format(date);
+    }
+  };
+
+  const handleKeyPress = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      handleSendMessage();
+    }
   };
 
   return (
-    <div className="space-y-4">
-      {/* Action Buttons */}
-      <div className="flex gap-3">
-        <button
-          onClick={() => setShowEmailModal(true)}
-          className="flex items-center gap-2 px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded-lg transition-colors"
-        >
-          <Mail className="w-4 h-4" />
-          Send Email
-        </button>
-        {leadPhone && (
+    <div className="bg-slate-800 rounded-lg border border-slate-700 flex flex-col h-[600px]">
+      {/* Header */}
+      <div className="p-4 border-b border-slate-700 flex items-center justify-between">
+        <h3 className="text-xl font-bold text-white">Messages</h3>
+
+        {/* Type Toggle */}
+        <div className="flex items-center gap-2 bg-slate-700 rounded-lg p-1">
+          {leadPhone && (
+            <button
+              onClick={() => setMessageType('sms')}
+              className={`flex items-center gap-2 px-3 py-1.5 rounded-md transition-colors text-sm ${
+                messageType === 'sms'
+                  ? 'bg-green-500 text-white'
+                  : 'text-slate-400 hover:text-white'
+              }`}
+            >
+              <MessageSquare className="w-4 h-4" />
+              SMS
+            </button>
+          )}
           <button
-            onClick={() => setShowSMSModal(true)}
-            className="flex items-center gap-2 px-4 py-2 bg-green-500 hover:bg-green-600 text-white rounded-lg transition-colors"
+            onClick={() => setMessageType('email')}
+            className={`flex items-center gap-2 px-3 py-1.5 rounded-md transition-colors text-sm ${
+              messageType === 'email'
+                ? 'bg-blue-500 text-white'
+                : 'text-slate-400 hover:text-white'
+            }`}
           >
-            <MessageSquare className="w-4 h-4" />
-            Send SMS
+            <Mail className="w-4 h-4" />
+            Email
           </button>
-        )}
+        </div>
       </div>
 
-      {/* Communication History */}
-      <div className="bg-slate-800 rounded-lg p-6 border border-slate-700">
-        <h3 className="text-xl font-bold text-white mb-4">Communication History</h3>
-
+      {/* Messages Area */}
+      <div className="flex-1 overflow-y-auto p-4 space-y-3">
         {loading ? (
-          <p className="text-slate-400">Loading...</p>
+          <div className="flex items-center justify-center h-full">
+            <p className="text-slate-400">Loading messages...</p>
+          </div>
         ) : communications.length === 0 ? (
-          <p className="text-slate-400">No communications yet</p>
+          <div className="flex items-center justify-center h-full">
+            <p className="text-slate-400">No messages yet. Start a conversation!</p>
+          </div>
         ) : (
-          <div className="space-y-4">
+          <>
             {communications.map((comm) => (
               <div
                 key={comm.id}
-                className={`p-4 rounded-lg border ${
-                  comm.direction === 'outbound'
-                    ? 'bg-blue-500/10 border-blue-500/30 ml-8'
-                    : 'bg-slate-700 border-slate-600 mr-8'
-                }`}
+                className={`flex ${comm.direction === 'outbound' ? 'justify-end' : 'justify-start'}`}
               >
-                <div className="flex items-start justify-between gap-3 mb-2">
-                  <div className="flex items-center gap-2">
+                <div
+                  className={`max-w-[70%] rounded-2xl px-4 py-2 ${
+                    comm.direction === 'outbound'
+                      ? 'bg-blue-500 text-white'
+                      : 'bg-slate-700 text-slate-100'
+                  }`}
+                >
+                  <div className="flex items-center gap-2 mb-1">
                     {comm.type === 'email' ? (
-                      <Mail className="w-4 h-4 text-blue-400" />
+                      <Mail className="w-3 h-3 opacity-70" />
                     ) : (
-                      <MessageSquare className="w-4 h-4 text-green-400" />
+                      <MessageSquare className="w-3 h-3 opacity-70" />
                     )}
-                    <span className="text-sm font-medium text-white">
-                      {comm.type === 'email' ? 'Email' : 'SMS'}
-                    </span>
-                    <span className="text-xs text-slate-400">
-                      {comm.direction === 'outbound' ? 'Sent to' : 'Received from'}{' '}
-                      {comm.direction === 'outbound' ? comm.to_address : comm.from_address}
+                    <span className="text-xs opacity-70">
+                      {comm.type.toUpperCase()}
                     </span>
                   </div>
-                  <span className="text-xs text-slate-400 whitespace-nowrap">
-                    {formatDate(comm.created_at)}
-                  </span>
-                </div>
-                {comm.subject && (
-                  <h4 className="text-sm font-semibold text-white mb-1">{comm.subject}</h4>
-                )}
-                <p className="text-sm text-slate-300 whitespace-pre-wrap">{comm.body}</p>
-                <div className="mt-2 flex items-center gap-2">
-                  <span
-                    className={`text-xs px-2 py-1 rounded-full ${
-                      comm.status === 'sent' || comm.status === 'delivered'
-                        ? 'bg-green-500/20 text-green-400'
-                        : comm.status === 'failed'
-                        ? 'bg-red-500/20 text-red-400'
-                        : 'bg-yellow-500/20 text-yellow-400'
-                    }`}
-                  >
-                    {comm.status}
-                  </span>
+
+                  {comm.subject && (
+                    <div className="font-semibold text-sm mb-1">{comm.subject}</div>
+                  )}
+
+                  <p className="text-sm whitespace-pre-wrap break-words">{comm.body}</p>
+
+                  <div className="flex items-center justify-between gap-2 mt-2">
+                    <span className="text-xs opacity-70">{formatTime(comm.created_at)}</span>
+                    <span
+                      className={`text-xs px-2 py-0.5 rounded-full ${
+                        comm.status === 'sent' || comm.status === 'delivered'
+                          ? 'bg-white/20'
+                          : comm.status === 'failed'
+                          ? 'bg-red-500/30'
+                          : 'bg-yellow-500/30'
+                      }`}
+                    >
+                      {comm.status}
+                    </span>
+                  </div>
                 </div>
               </div>
             ))}
-          </div>
+            <div ref={messagesEndRef} />
+          </>
         )}
       </div>
 
-      {/* Email Modal */}
-      {showEmailModal && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="bg-slate-800 rounded-lg p-6 max-w-2xl w-full border border-slate-700">
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="text-xl font-bold text-white">Send Email to {leadName}</h3>
+      {/* Input Area */}
+      <div className="p-4 border-t border-slate-700 space-y-2">
+        {/* Email Subject Field (optional) */}
+        {messageType === 'email' && (
+          <>
+            {!showSubject ? (
               <button
-                onClick={() => setShowEmailModal(false)}
-                className="text-slate-400 hover:text-white"
+                onClick={() => setShowSubject(true)}
+                className="text-xs text-blue-400 hover:text-blue-300"
               >
-                <X className="w-5 h-5" />
+                + Add subject
               </button>
-            </div>
-            <div className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-slate-300 mb-1">To</label>
-                <input
-                  type="email"
-                  value={leadEmail}
-                  disabled
-                  className="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-slate-300 mb-1">Subject</label>
-                <input
-                  type="text"
-                  value={emailSubject}
-                  onChange={(e) => setEmailSubject(e.target.value)}
-                  placeholder="Enter email subject"
-                  className="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-slate-300 mb-1">Message</label>
-                <textarea
-                  value={emailBody}
-                  onChange={(e) => setEmailBody(e.target.value)}
-                  placeholder="Enter your message"
-                  rows={8}
-                  className="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                />
-              </div>
-              <div className="flex justify-end gap-3">
-                <button
-                  onClick={() => setShowEmailModal(false)}
-                  className="px-4 py-2 bg-slate-700 hover:bg-slate-600 text-white rounded-lg transition-colors"
-                >
-                  Cancel
-                </button>
-                <button
-                  onClick={handleSendEmail}
-                  disabled={sendingEmail}
-                  className="flex items-center gap-2 px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded-lg transition-colors disabled:opacity-50"
-                >
-                  <Send className="w-4 h-4" />
-                  {sendingEmail ? 'Sending...' : 'Send Email'}
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
+            ) : (
+              <input
+                type="text"
+                value={emailSubject}
+                onChange={(e) => setEmailSubject(e.target.value)}
+                placeholder="Email subject (optional)"
+                className="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white text-sm placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
+            )}
+          </>
+        )}
 
-      {/* SMS Modal */}
-      {showSMSModal && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="bg-slate-800 rounded-lg p-6 max-w-lg w-full border border-slate-700">
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="text-xl font-bold text-white">Send SMS to {leadName}</h3>
-              <button
-                onClick={() => setShowSMSModal(false)}
-                className="text-slate-400 hover:text-white"
-              >
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-            <div className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-slate-300 mb-1">To</label>
-                <input
-                  type="tel"
-                  value={leadPhone || ''}
-                  disabled
-                  className="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-slate-300 mb-1">Message</label>
-                <textarea
-                  value={smsBody}
-                  onChange={(e) => setSmsBody(e.target.value)}
-                  placeholder="Enter your message"
-                  rows={5}
-                  className="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-green-500"
-                />
-                <p className="text-xs text-slate-400 mt-1">{smsBody.length} characters</p>
-              </div>
-              <div className="flex justify-end gap-3">
-                <button
-                  onClick={() => setShowSMSModal(false)}
-                  className="px-4 py-2 bg-slate-700 hover:bg-slate-600 text-white rounded-lg transition-colors"
-                >
-                  Cancel
-                </button>
-                <button
-                  onClick={handleSendSMS}
-                  disabled={sendingSMS}
-                  className="flex items-center gap-2 px-4 py-2 bg-green-500 hover:bg-green-600 text-white rounded-lg transition-colors disabled:opacity-50"
-                >
-                  <Send className="w-4 h-4" />
-                  {sendingSMS ? 'Sending...' : 'Send SMS'}
-                </button>
-              </div>
-            </div>
-          </div>
+        {/* Message Input */}
+        <div className="flex gap-2">
+          <textarea
+            value={messageBody}
+            onChange={(e) => setMessageBody(e.target.value)}
+            onKeyPress={handleKeyPress}
+            placeholder={`Type a ${messageType === 'email' ? 'message' : 'text message'}...`}
+            rows={2}
+            className="flex-1 px-4 py-3 bg-slate-700 border border-slate-600 rounded-2xl text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
+          />
+          <button
+            onClick={handleSendMessage}
+            disabled={sending || !messageBody.trim()}
+            className={`px-4 rounded-2xl transition-colors ${
+              messageType === 'email'
+                ? 'bg-blue-500 hover:bg-blue-600'
+                : 'bg-green-500 hover:bg-green-600'
+            } text-white disabled:opacity-50 disabled:cursor-not-allowed`}
+          >
+            <Send className="w-5 h-5" />
+          </button>
         </div>
-      )}
+
+        {/* Character count for SMS */}
+        {messageType === 'sms' && messageBody.length > 0 && (
+          <p className="text-xs text-slate-400">
+            {messageBody.length} character{messageBody.length !== 1 ? 's' : ''}
+            {messageBody.length > 160 && (
+              <span className="text-yellow-400 ml-2">
+                (Will be sent as {Math.ceil(messageBody.length / 160)} messages)
+              </span>
+            )}
+          </p>
+        )}
+      </div>
     </div>
   );
 }
