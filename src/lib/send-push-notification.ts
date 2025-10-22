@@ -9,7 +9,7 @@ interface SendPushNotificationParams {
   body: string;
   icon?: string;
   badge?: string;
-  data?: any;
+  data?: Record<string, unknown>;
   url?: string;
 }
 

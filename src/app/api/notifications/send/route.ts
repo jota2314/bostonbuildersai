@@ -23,7 +23,7 @@ interface SendNotificationBody {
   body: string;
   icon?: string;
   badge?: string;
-  data?: any;
+  data?: Record<string, unknown>;
   url?: string;
 }
 
@@ -90,18 +90,19 @@ export async function POST(request: NextRequest) {
         try {
           await webpush.sendNotification(sub.subscription_data, payload);
           return { success: true };
-        } catch (error: any) {
+        } catch (error) {
           console.error('Error sending notification:', error);
 
           // If subscription is no longer valid, delete it
-          if (error.statusCode === 410) {
+          if (error && typeof error === 'object' && 'statusCode' in error && error.statusCode === 410) {
             await supabase
               .from('push_subscriptions')
               .delete()
               .eq('endpoint', sub.subscription_data.endpoint);
           }
 
-          return { success: false, error: error.message };
+          const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+          return { success: false, error: errorMessage };
         }
       })
     );
