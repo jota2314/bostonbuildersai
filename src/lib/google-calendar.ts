@@ -136,7 +136,7 @@ export async function updateCalendarEvent(
       throw new Error('GOOGLE_CALENDAR_ID not configured');
     }
 
-    const updateData: Record<string, string> = {};
+    const updateData: Record<string, unknown> = {};
 
     if (eventData.summary) {
       updateData.summary = eventData.summary;
