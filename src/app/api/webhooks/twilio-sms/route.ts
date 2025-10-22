@@ -23,21 +23,30 @@ export async function POST(req: NextRequest) {
 
     const supabase = getServerSupabase();
 
-    // Find lead by phone number
-    const { data: lead } = await supabase
+    // Normalize phone number (remove +1, spaces, dashes, parentheses)
+    const normalizedFrom = from.replace(/^\+1/, '').replace(/[\s\-\(\)]/g, '');
+
+    // Try multiple phone formats to find the lead
+    const { data: leads } = await supabase
       .from('leads')
-      .select('id, contact_name, email, notes')
-      .eq('phone', from)
-      .order('created_at', { ascending: false })
-      .limit(1)
-      .single();
+      .select('id, contact_name, email, notes, phone')
+      .order('created_at', { ascending: false });
+
+    // Find lead by matching phone number (trying different formats)
+    const lead = leads?.find(l => {
+      if (!l.phone) return false;
+      const normalizedLeadPhone = l.phone.replace(/^\+1/, '').replace(/[\s\-\(\)]/g, '');
+      return normalizedLeadPhone === normalizedFrom;
+    });
 
     if (!lead) {
-      console.log('⚠️ Lead not found for phone:', from);
+      console.log('⚠️ Lead not found for phone:', from, '(normalized:', normalizedFrom + ')');
       return new Response('<?xml version="1.0" encoding="UTF-8"?><Response></Response>', {
         headers: { 'Content-Type': 'text/xml' },
       });
     }
+
+    console.log('✅ Found lead:', lead.contact_name, 'for phone:', from);
 
     // Save incoming SMS to communications
     await saveCommunication({
