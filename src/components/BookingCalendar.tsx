@@ -399,7 +399,7 @@ export default function BookingCalendar({ onClose }: BookingCalendarProps) {
               <div className="w-20 h-20 bg-green-900/30 border border-green-600 rounded-full flex items-center justify-center mx-auto mb-6">
                 <Check className="w-12 h-12 text-green-400" />
               </div>
-              <h3 className="text-3xl font-bold text-slate-100 mb-4">You're all set!</h3>
+              <h3 className="text-3xl font-bold text-slate-100 mb-4">You&apos;re all set!</h3>
               <p className="text-lg text-slate-300 mb-8">
                 Your meeting with Jorge is confirmed for<br />
                 <strong className="text-slate-100">{selectedDate && formatDate(selectedDate)}</strong> at <strong className="text-slate-100">{selectedTime && formatTimeSlot(selectedTime)}</strong>

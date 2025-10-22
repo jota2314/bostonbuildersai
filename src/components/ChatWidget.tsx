@@ -4,7 +4,6 @@ import { MessageCircle, X, Send, Mic } from 'lucide-react';
 import { useState, useRef, useEffect } from 'react';
 import { useChat } from '@ai-sdk/react';
 import { isToolUIPart, getToolName, DefaultChatTransport } from 'ai';
-import QuickReplyButton from './QuickReplyButton';
 
 export default function ChatWidget() {
   const [isOpen, setIsOpen] = useState(false);
@@ -109,10 +108,6 @@ export default function ChatWidget() {
     setInput('');
   };
 
-  const handleQuickReply = (message: string) => {
-    if (status === 'submitted' || status === 'streaming') return;
-    sendMessage({ text: message });
-  };
 
   const handleLeadSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -205,7 +200,7 @@ export default function ChatWidget() {
                     {afterText && <div>{afterText.trim()}</div>}
                   </div>
                 );
-              } catch (e) {
+              } catch {
                 // If JSON parsing fails (incomplete stream), hide the text
                 if (status === 'streaming' && part.text.includes('DATEOPTIONS:')) {
                   // Extract just the text before DATEOPTIONS while streaming
@@ -249,7 +244,7 @@ export default function ChatWidget() {
                     {afterText && <div>{afterText.trim()}</div>}
                   </div>
                 );
-              } catch (e) {
+              } catch {
                 // If JSON parsing fails (incomplete stream), hide the text
                 if (status === 'streaming' && part.text.includes('TIMESLOTS:')) {
                   // Extract just the text before TIMESLOTS while streaming
