@@ -1,100 +1,153 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
-import { sendInboundMessageNotification } from '@/lib/notifications';
+import { NextRequest } from 'next/server';
+import { openai, models } from '@/lib/ai/provider';
+import { generateText } from 'ai';
+import { getServerSupabase } from '@/lib/supabase-server';
+import { saveCommunication } from '@/lib/db-operations';
+import { sendSMS } from '@/lib/twilio-sms';
 
-export async function POST(request: NextRequest) {
+export async function POST(req: NextRequest) {
   try {
-    const formData = await request.formData();
-
-    // Twilio sends data as form-urlencoded
+    const formData = await req.formData();
     const from = formData.get('From') as string;
-    const to = formData.get('To') as string;
     const body = formData.get('Body') as string;
     const messageSid = formData.get('MessageSid') as string;
 
-    console.log('Received inbound SMS:', { from, to, body, messageSid });
+    console.log('📱 Incoming SMS from:', from);
+    console.log('💬 Message:', body);
 
     if (!from || !body) {
-      return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
-    }
-
-    // Use service role key for webhooks (bypasses RLS)
-    const supabase = createClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.SUPABASE_SERVICE_ROLE_KEY!
-    );
-
-    // Find the lead by phone number
-    // Format the phone number to match what might be in the database
-    const phoneVariants = [
-      from,
-      from.replace(/\D/g, ''), // Just digits
-      from.replace(/^\+1/, ''), // Remove +1 prefix
-    ];
-
-    const { data: leads, error: findError } = await supabase
-      .from('leads')
-      .select('id, email, phone')
-      .or(phoneVariants.map(p => `phone.eq.${p}`).join(','));
-
-    if (findError) {
-      console.error('Error finding lead:', findError);
-      return NextResponse.json({ error: 'Database error' }, { status: 500 });
-    }
-
-    // If we found a lead, log the inbound SMS
-    if (leads && leads.length > 0) {
-      const lead = leads[0];
-
-      const { error: insertError } = await supabase.from('communications').insert({
-        lead_id: lead.id,
-        type: 'sms',
-        direction: 'inbound',
-        body,
-        from_address: from,
-        to_address: to,
-        status: 'delivered',
-        provider_id: messageSid,
+      return new Response('<?xml version="1.0" encoding="UTF-8"?><Response></Response>', {
+        headers: { 'Content-Type': 'text/xml' },
       });
-
-      if (insertError) {
-        console.error('Error logging inbound SMS:', insertError);
-      } else {
-        console.log('Inbound SMS logged successfully for lead:', lead.id);
-
-        // Send email notification
-        const { data: fullLead } = await supabase
-          .from('leads')
-          .select('company_name, contact_name')
-          .eq('id', lead.id)
-          .single();
-
-        await sendInboundMessageNotification({
-          leadId: lead.id,
-          leadName: fullLead?.contact_name || fullLead?.company_name || 'Unknown Lead',
-          leadPhone: from,
-          messageType: 'sms',
-          messageBody: body,
-        });
-      }
-    } else {
-      console.log('No lead found for phone number:', from);
-      // Optionally: Create a new lead automatically or log to a separate table
     }
 
-    // Respond to Twilio with TwiML (empty response = no reply)
-    return new Response(
-      '<?xml version="1.0" encoding="UTF-8"?><Response></Response>',
-      {
-        status: 200,
-        headers: {
-          'Content-Type': 'text/xml',
-        },
+    const supabase = getServerSupabase();
+
+    // Find lead by phone number
+    const { data: lead } = await supabase
+      .from('leads')
+      .select('id, contact_name, email, notes')
+      .eq('phone', from)
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .single();
+
+    if (!lead) {
+      console.log('⚠️ Lead not found for phone:', from);
+      return new Response('<?xml version="1.0" encoding="UTF-8"?><Response></Response>', {
+        headers: { 'Content-Type': 'text/xml' },
+      });
+    }
+
+    // Save incoming SMS to communications
+    await saveCommunication({
+      lead_id: lead.id,
+      type: 'sms',
+      direction: 'inbound',
+      body,
+      from_address: from,
+      to_address: process.env.TWILIO_PHONE_NUMBER || '+18773695137',
+      status: 'delivered',
+      provider_id: messageSid,
+      metadata: {
+        type: 'discovery_sms_reply'
       }
-    );
+    });
+
+    // Get recent SMS conversation history
+    const { data: recentComms } = await supabase
+      .from('communications')
+      .select('*')
+      .eq('lead_id', lead.id)
+      .eq('type', 'sms')
+      .gte('created_at', new Date(Date.now() - 30 * 60 * 1000).toISOString())
+      .order('created_at', { ascending: true });
+
+    // Build conversation context
+    const conversationHistory = (recentComms || []).map(comm => ({
+      role: comm.direction === 'outbound' ? 'assistant' : 'user',
+      content: comm.body
+    }));
+
+    conversationHistory.push({
+      role: 'user',
+      content: body
+    });
+
+    // Use AI to determine next question
+    const systemPrompt = \`You are Jorge's AI assistant helping gather discovery information via SMS.
+
+Ask one question at a time about:
+1. Website (Do they have one? URL?)
+2. Services interested in (CRM, lead tracking, etc.)
+3. Biggest business challenge
+4. Other frustrations with current systems
+
+Keep messages SHORT. After all questions answered, thank them.
+
+Lead: \${lead.contact_name || 'there'}
+
+Respond with ONLY the next SMS message (under 160 chars).\`;
+
+    const result = await generateText({
+      model: openai(models.default),
+      messages: conversationHistory,
+      system: systemPrompt,
+      temperature: 0.7,
+    });
+
+    const responseText = result.text.trim();
+
+    // Send SMS response
+    await sendSMS({
+      to: from,
+      body: responseText
+    });
+
+    console.log('✅ SMS response sent:', responseText);
+
+    // Save outgoing SMS to communications
+    await saveCommunication({
+      lead_id: lead.id,
+      type: 'sms',
+      direction: 'outbound',
+      body: responseText,
+      from_address: process.env.TWILIO_PHONE_NUMBER || '+18773695137',
+      to_address: from,
+      status: 'sent',
+      metadata: {
+        type: 'discovery_sms'
+      }
+    });
+
+    // Update lead notes with conversation
+    const conversationText = conversationHistory
+      .map(msg => \`\${msg.role === 'user' ? 'Client' : 'AI'}: \${msg.content}\`)
+      .join('\n');
+
+    const existingNotes = lead.notes || '';
+    const smsHeader = '\n\n📱 SMS Discovery:\n';
+    const updatedNotes = existingNotes.includes(smsHeader)
+      ? existingNotes.replace(
+          new RegExp(\`\${smsHeader}[\\s\\S]*$\`),
+          \`\${smsHeader}\${conversationText}\`
+        )
+      : \`\${existingNotes}\${smsHeader}\${conversationText}\`;
+
+    await supabase
+      .from('leads')
+      .update({ notes: updatedNotes })
+      .eq('id', lead.id);
+
+    console.log('✅ Lead notes updated');
+
+    return new Response('<?xml version="1.0" encoding="UTF-8"?><Response></Response>', {
+      headers: { 'Content-Type': 'text/xml' },
+    });
   } catch (error) {
-    console.error('Twilio SMS webhook error:', error);
-    const message = error instanceof Error ? error.message : 'Unknown error';
-    return NextResponse.json({ error: message }, { status: 500 });
+    console.error('❌ Error handling SMS webhook:', error);
+    return new Response('<?xml version="1.0" encoding="UTF-8"?><Response></Response>', {
+      headers: { 'Content-Type': 'text/xml' },
+    });
   }
 }

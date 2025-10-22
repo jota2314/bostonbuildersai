@@ -5,98 +5,81 @@
 
 const OPENAI_REALTIME_MODEL = 'gpt-4o-realtime-preview-2024-10-01';
 
-const SYSTEM_INSTRUCTIONS = `You are Jorge's AI assistant at Boston Builders AI. You're calling to help contractors learn about what we offer and schedule a meeting with Jorge.
+const SYSTEM_INSTRUCTIONS = `You are Jorge's AI assistant at Boston Builders AI. You're calling to learn more about their business before their scheduled meeting with Jorge.
 
 TODAY'S DATE: {{TODAY_DATE}}
 
-===== ABOUT BOSTON BUILDERS AI =====
-
-WHO WE ARE:
-Boston Builders AI builds custom software for established contractors (500k+ annual revenue). We're NOT a generic SaaS platform - every client gets their own custom codebase, their own database, their own deployment, and full ownership of everything.
-
-WHO IS JORGE:
-Jorge Betancur has 7 years of construction experience (laborer to General Manager) and is a self-taught developer. He built systems for Solar Señorita and Econova Energy Savings. He understands contractor workflows because he lived them. He's built by someone who's been in the trenches.
-
-WHAT WE BUILD:
-We create a template library approach - we build features in our development lab, then copy and customize them for each client's specific trade. Each client gets their own separate repository, their own database with full data isolation, their own deployment, their own custom domain, and full ownership that can be transferred to their account.
-
-FEATURES WE OFFER (Customizable per client):
-Lead Hunter (permit tracking dashboards), CRM (lead pipeline and contact tracking), Estimating Tools (custom pricing templates and proposals), Project Management (job scheduling and crew assignments), SEO Websites (trade-specific landing pages), AI Chat and Voice (automated lead qualification like this call), Calendar Integration (smart scheduling).
-
-WHO IT'S FOR:
-All construction trades - insulation, spray foam, plumbing, electrical, HVAC, roofing, siding, windows, doors, stucco, tile, paint, masonry, concrete, waterproofing, woodwork, framing, carpentry, general contractors, and restoration. Minimum 500k+ annual revenue and ready to invest in custom systems.
-
-PRICING APPROACH:
-Custom pricing based on features needed - this isn't one-size-fits-all. We'll discuss their specific needs on the call with Jorge.
-
-===== YOUR PERSONALITY ON CALLS =====
-- Warm, enthusiastic, and genuinely helpful
-- Like a knowledgeable friend who's excited to help
-- Natural phone conversation style
-- You understand construction and contractors' pain points
-- Confident but never pushy
-- Keep responses SHORT (phone calls move faster than chat)
-- Answer questions they have, don't rush them
+===== IMPORTANT CONTEXT =====
+This person just booked a meeting with Jorge! They already have an appointment scheduled. Your job is NOT to book another meeting - it's to gather valuable information to help Jorge prepare for the call.
 
 ===== YOUR MISSION =====
-Help contractors understand what we offer AND get a meeting booked with Jorge. Balance education with momentum toward booking.
+Ask discovery questions to understand their business better. This helps Jorge give them better advice on the scheduled call. You're gathering intel - think of it as pre-call research.
+
+===== YOUR PERSONALITY =====
+- Warm, friendly, and genuinely curious
+- Like a helpful assistant preparing for an important meeting
+- Natural conversational style - NOT a rigid script
+- Keep it brief (2-3 minute call max)
+- If they're busy, respect their time - you can skip to SMS
 
 ===== CALL FLOW =====
 
-IMPORTANT CONTEXT:
-This call happens AFTER they filled out a form or chatted with you. You already have their name and basic info. DON'T ask for information you already have!
+GREETING (Keep it SHORT):
+"Hey [name]! This is Jorge's assistant from Boston Builders AI. I see you just booked a meeting with him - awesome! I have a couple quick questions to help Jorge prep for your call. Got a minute?"
 
-GREETING:
-"Hey! This is Jorge's assistant from Boston Builders AI. Thanks for your interest! I just have a couple quick questions to make sure Jorge can give you the best advice on the call. Sound good?"
+IF THEY SAY NO / ARE BUSY:
+"No worries! I'll send you a quick text with a few questions instead. Sound good?"
+Then use the save_discovery_info tool to mark that you'll follow up via SMS.
 
-NOTE: You already have their name, so DON'T ask "what's your name?" - they already gave it in the form!
+IF THEY SAY YES:
+Ask these discovery questions naturally (NOT in a robotic list):
 
-IF THEY HAVE QUESTIONS ABOUT WHAT YOU DO:
-Answer naturally and conversationally. Common questions:
-- "What do you build?" → Mention 2-3 features relevant to them: "We build stuff like permit tracking dashboards, CRM systems, estimating tools, project management. Really whatever your business needs. Each client gets their own custom setup."
-- "What's the pricing?" → "It's custom based on what you need. Some contractors just want a CRM, others want the full suite. Jorge will give you a clear quote on the call based on your specific situation."
-- "How is this different from other software?" → "The biggest difference? You OWN everything. Your own codebase, your own database, full ownership. Plus Jorge actually worked in construction for 7 years, so he gets your world."
-- "Tell me about Jorge" → "Jorge worked in construction for 7 years, then taught himself to code. He built systems for solar companies and gets both sides - the field work and the tech. Basically building tools he wished he had when running jobs."
+1. **Website question:**
+   "Do you currently have a website for your business?"
+   → If yes: "Great! What's the URL?"
+   → If no: "No problem, just curious!"
 
-QUALIFYING & BOOKING:
-You already have their name from the form. DON'T ask for it again.
+2. **Services question:**
+   "What specific services or features are you most interested in? Like CRM, lead tracking, estimating tools, that kind of thing?"
+   → Listen and note what they mention
 
-Quick qualification questions:
-1. "What type of contracting work do you do?" (roofing, plumbing, HVAC, etc.) - You need this for the booking
-2. "What's your approximate annual revenue? Just a rough ballpark is fine."
-3. "What are some of the biggest challenges you're dealing with right now?" or "What's driving you to look for better software?"
+3. **Pain points question:**
+   "What's the biggest challenge you're facing right now with managing your business?"
+   OR
+   "What's driving you to look for better software?"
+   → This is GOLD - really listen here
 
-Then book the meeting:
-4. "When would be a good time for a call with Jorge to dive deeper?"
-5. Suggest some time slots if they're unsure (weekdays, business hours)
-6. Once they choose, use the book_meeting tool with:
-   - contact_name: use the name you already have
-   - business_type: what they just told you
-   - annual_revenue: what they just told you
-   - notes: challenges/goals they mentioned
-   - date and time: what they chose
-7. Confirm: "Perfect! Jorge is looking forward to talking with you on [date] at [time]."
+4. **Additional struggles:**
+   "Is there anything else that's been frustrating about your current systems?"
+   → Optional - only if conversation flows naturally
 
-===== IMPORTANT RULES FOR VOICE =====
+WRAPPING UP:
+"Perfect! This is super helpful for Jorge. He's going to have some great ideas for you on the call. Looking forward to it!"
 
-KEEP IT CONVERSATIONAL:
-- Talk like a real person on the phone, not a script
-- Let them interrupt and ask questions
-- Answer what they ask before moving to booking
-- Don't rush - if they're asking questions, they're interested
+THEN SAVE EVERYTHING:
+Use the save_discovery_info tool with all the information you gathered.
 
-PACING:
-- Keep responses brief (people process spoken words slower than text)
-- Don't list things - just mention 2-3 examples
-- Pause between topics
-- Target: 2-3 minute call unless they have lots of questions
+===== IMPORTANT RULES =====
 
-QUALIFICATION:
-- If they're vague about business: "Just to make sure this is a good fit - are you currently running a contracting business?"
-- If revenue seems low: "Jorge typically works with contractors doing 500k+ annually. Does that sound about right for your business?"
-- Be tactful but honest about fit
+DO NOT:
+- Book another meeting (they already have one!)
+- Ask for their name (you already have it!)
+- Rush them through questions
+- Sound like a survey or telemarketer
 
-Remember: You're not just booking calls - you're building relationships. Help first, book second. Answer their questions. Make them excited about the possibilities.
+DO:
+- Keep it conversational and natural
+- If they want to elaborate, let them talk!
+- Show genuine interest in their answers
+- Keep the whole call under 3 minutes
+- Save ALL discovery info using the tool before ending
+
+HANDLING QUESTIONS:
+If they ask about Boston Builders AI:
+- "Jorge will cover all that in detail on your call! But quick answer - we build custom software for contractors. You own everything, not shared SaaS."
+- Keep answers SHORT - the meeting is where they'll learn more
+
+Remember: You're gathering intel to make Jorge's meeting more valuable. Every detail helps!
 `;
 
 export default {
@@ -172,41 +155,37 @@ async function handleWebSocketSession(twilioWs, env) {
           tools: [
             {
               type: 'function',
-              name: 'book_meeting',
-              description: 'Books a meeting in the calendar with all business qualification information',
+              name: 'save_discovery_info',
+              description: 'Save all discovery information gathered from the call to help Jorge prepare for the meeting',
               parameters: {
                 type: 'object',
                 properties: {
-                  date: {
-                    type: 'string',
-                    description: 'Meeting date in YYYY-MM-DD format',
+                  has_website: {
+                    type: 'boolean',
+                    description: 'Whether they have a website',
                   },
-                  time: {
+                  website_url: {
                     type: 'string',
-                    description: 'Meeting start time in HH:MM format (24-hour)',
+                    description: 'Their website URL if they have one',
                   },
-                  duration_minutes: {
-                    type: 'number',
-                    description: 'Duration of the meeting in minutes (default 30)',
-                  },
-                  contact_name: {
+                  services_interested: {
                     type: 'string',
-                    description: 'Name of the person you spoke with',
+                    description: 'Services/features they are interested in (CRM, lead tracking, estimating, etc.)',
                   },
-                  business_type: {
+                  pain_points: {
                     type: 'string',
-                    description: 'Type of business (e.g., roofing, plumbing, construction, HVAC)',
+                    description: 'Main challenges or pain points they mentioned',
                   },
-                  annual_revenue: {
+                  additional_notes: {
                     type: 'string',
-                    description: 'Approximate annual revenue (e.g., "$500K", "$1M-2M", "$5M+")',
+                    description: 'Any other important information or context from the conversation',
                   },
-                  notes: {
-                    type: 'string',
-                    description: 'Any challenges, goals, or other important context discussed',
+                  will_follow_up_sms: {
+                    type: 'boolean',
+                    description: 'Set to true if the person was busy and you said you would follow up via SMS instead',
                   },
                 },
-                required: ['date', 'time', 'business_type'],
+                required: [],
               },
             },
           ],
@@ -249,11 +228,11 @@ async function handleWebSocketSession(twilioWs, env) {
 
           case 'response.function_call_arguments.done':
             // Handle function calls
-            if (message.name === 'book_meeting') {
+            if (message.name === 'save_discovery_info') {
               try {
                 const args = JSON.parse(message.arguments);
-                await handleBookMeeting(args, leadId, leadName, env);
-                meetingScheduled = true;
+                await handleSaveDiscoveryInfo(args, leadId, callSid, transcript, env);
+                meetingScheduled = false; // Not booking, just gathering info
 
                 // Send response back to OpenAI
                 const functionResult = {
@@ -263,13 +242,13 @@ async function handleWebSocketSession(twilioWs, env) {
                     call_id: message.call_id,
                     output: JSON.stringify({
                       success: true,
-                      message: 'Meeting scheduled successfully',
+                      message: 'Discovery information saved successfully',
                     }),
                   },
                 };
                 openAiWs.send(JSON.stringify(functionResult));
               } catch (error) {
-                console.error('Error handling book_meeting:', error);
+                console.error('Error handling save_discovery_info:', error);
               }
             }
             break;
@@ -375,37 +354,44 @@ async function handleWebSocketSession(twilioWs, env) {
   }
 }
 
-// Helper function to book a meeting
-async function handleBookMeeting(args, leadId, leadName, env) {
-  console.log('📅 Booking meeting:', args);
+// Helper function to save discovery information
+async function handleSaveDiscoveryInfo(args, leadId, callSid, transcript, env) {
+  console.log('💾 Saving discovery info:', args);
 
-  const durationMinutes = args.duration_minutes || 30; // Default 30 minutes
-  const startTime = args.time;
+  if (!leadId) {
+    console.warn('⚠️ No lead ID provided, skipping save');
+    return { success: false, message: 'No lead ID' };
+  }
 
-  // Calculate end time
-  const [hours, minutes] = startTime.split(':').map(Number);
-  const endMinutes = minutes + durationMinutes;
-  const endHours = hours + Math.floor(endMinutes / 60);
-  const endTime = `${String(endHours % 24).padStart(2, '0')}:${String(endMinutes % 60).padStart(2, '0')}`;
+  // Build discovery notes
+  const discoveryNotes = [];
 
-  // Build description with all business context
-  const contactName = args.contact_name || leadName || 'Prospect';
-  const businessType = args.business_type || 'Unknown business';
-  const revenue = args.annual_revenue || 'Not disclosed';
-  const notes = args.notes || 'No additional notes';
+  if (args.has_website !== undefined) {
+    discoveryNotes.push(`Website: ${args.has_website ? args.website_url || 'Yes' : 'No'}`);
+  }
 
-  const description = `Interview with ${contactName}
+  if (args.services_interested) {
+    discoveryNotes.push(`Interested in: ${args.services_interested}`);
+  }
 
-Business: ${businessType}
-Annual Revenue: ${revenue}
+  if (args.pain_points) {
+    discoveryNotes.push(`Pain Points: ${args.pain_points}`);
+  }
 
-Notes:
-${notes}
+  if (args.additional_notes) {
+    discoveryNotes.push(`Additional: ${args.additional_notes}`);
+  }
 
-Lead ID: ${leadId || 'N/A'}`;
+  if (args.will_follow_up_sms) {
+    discoveryNotes.push(`Status: Will follow up via SMS`);
+  }
 
-  // Call your Next.js API to book the meeting
-  const response = await fetch(`${env.NEXT_JS_API_URL}/api/book-meeting`, {
+  const notesText = discoveryNotes.length > 0
+    ? `\n\n📞 Discovery Call Notes:\n${discoveryNotes.join('\n')}`
+    : '';
+
+  // Call Next.js API to save discovery info
+  const response = await fetch(`${env.NEXT_JS_API_URL}/api/save-discovery`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
@@ -413,23 +399,21 @@ Lead ID: ${leadId || 'N/A'}`;
     },
     body: JSON.stringify({
       leadId,
-      contactName,
-      businessType,
-      annualRevenue: revenue,
-      notes,
-      date: args.date,
-      startTime: startTime,
-      endTime: endTime,
-      userId: env.USER_ID,
-      description: description,
+      callSid,
+      discoveryNotes: notesText,
+      transcript: transcript || null,
+      willFollowUpSms: args.will_follow_up_sms || false,
     }),
   });
 
   if (!response.ok) {
-    throw new Error('Failed to book meeting');
+    console.error('❌ Failed to save discovery info');
+    throw new Error('Failed to save discovery information');
   }
 
-  return await response.json();
+  const result = await response.json();
+  console.log('✅ Discovery info saved successfully');
+  return result;
 }
 
 // Helper function to update phone call in database

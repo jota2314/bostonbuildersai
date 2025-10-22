@@ -6,12 +6,14 @@ import {
   createCalendarEvent,
   getEventsByUserAndDate,
   createOrGetConversation,
-  saveChatMessage
+  saveChatMessage,
+  saveCommunication
 } from '@/lib/db-operations';
 import type { LeadData, CalendarEvent } from '@/lib/types';
 import { createCalendarEvent as createGoogleEvent } from '@/lib/google-calendar';
 import { sendEmail } from '@/lib/resend';
 import { sendSMS } from '@/lib/twilio-sms';
+import { getServerSupabase } from '@/lib/supabase-server';
 
 // Request validation
 const MessagePartSchema = z.object({
@@ -170,6 +172,19 @@ async function bookAppointment(args: {
 }) {
   console.log('📞 Booking appointment for:', args.name);
 
+  // Look up the lead by email to get lead_id
+  const supabase = getServerSupabase();
+  const { data: leadData } = await supabase
+    .from('leads')
+    .select('id, notes')
+    .eq('email', args.email)
+    .order('created_at', { ascending: false })
+    .limit(1)
+    .single();
+
+  const leadId = leadData?.id;
+  console.log('📋 Found lead ID:', leadId);
+
   // Create Google Calendar event with Meet link FIRST
   const startDateTime = `${args.date}T${args.start_time}:00`;
   const endDateTime = `${args.date}T${args.end_time}:00`;
@@ -206,11 +221,28 @@ async function bookAppointment(args: {
     return `ERROR: Could not save appointment. Please try again.`;
   }
 
+  // Update lead notes with meeting information
+  if (leadId) {
+    const meetingNote = `\nMeeting scheduled for ${args.date} at ${args.start_time}. Purpose: ${args.purpose || 'Discovery call'}`;
+    const existingNotes = leadData?.notes || '';
+    const updatedNotes = existingNotes ? `${existingNotes}${meetingNote}` : meetingNote.trim();
+
+    await supabase
+      .from('leads')
+      .update({ notes: updatedNotes })
+      .eq('id', leadId);
+
+    console.log('✅ Lead notes updated with meeting schedule');
+  }
+
   // Send email confirmation
+  const emailSubject = `Meeting Confirmed: Call with Jorge on ${args.date}`;
+  const emailBody = `Hi ${args.name}, Your call with Jorge is confirmed for ${args.date} at ${args.start_time}. Meeting link: ${meetLink}`;
+
   try {
     await sendEmail({
       to: args.email,
-      subject: `Meeting Confirmed: Call with Jorge on ${args.date}`,
+      subject: emailSubject,
       html: `
         <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
           <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 30px; text-align: center; border-radius: 10px 10px 0 0;">
@@ -242,18 +274,48 @@ async function bookAppointment(args: {
       `,
     });
     console.log('✅ Confirmation email sent to:', args.email);
+
+    // Save email to communications history
+    if (leadId) {
+      await saveCommunication({
+        lead_id: leadId,
+        type: 'email',
+        direction: 'outbound',
+        subject: emailSubject,
+        body: emailBody,
+        from_address: process.env.FROM_EMAIL || 'jorge@bostonbuildersai.com',
+        to_address: args.email,
+        status: 'sent',
+      });
+      console.log('✅ Email saved to communication history');
+    }
   } catch (error) {
     console.error('❌ Error sending email:', error);
   }
 
   // Send SMS confirmation
   if (args.phone) {
+    const smsBody = `Hi ${args.name}! Your call with Jorge is confirmed for ${args.date} at ${args.start_time}. Meeting link: ${meetLink}`;
     try {
       await sendSMS({
         to: args.phone,
-        body: `Hi ${args.name}! Your call with Jorge is confirmed for ${args.date} at ${args.start_time}. Meeting link: ${meetLink}`
+        body: smsBody
       });
       console.log('✅ Confirmation SMS sent to:', args.phone);
+
+      // Save SMS to communications history
+      if (leadId) {
+        await saveCommunication({
+          lead_id: leadId,
+          type: 'sms',
+          direction: 'outbound',
+          body: smsBody,
+          from_address: process.env.TWILIO_PHONE_NUMBER || '+18773695137',
+          to_address: args.phone,
+          status: 'sent',
+        });
+        console.log('✅ SMS saved to communication history');
+      }
     } catch (error) {
       console.error('❌ Error sending SMS:', error);
     }
