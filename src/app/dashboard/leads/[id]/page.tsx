@@ -7,12 +7,10 @@ import DashboardLayout from '@/components/DashboardLayout';
 import CommunicationHistory from '@/components/CommunicationHistory';
 import {
   ArrowLeft,
-  Building2,
   Mail,
   Phone,
   MapPin,
   DollarSign,
-  Calendar,
   User,
   ChevronDown,
   ChevronUp,
@@ -30,12 +28,6 @@ const statusConfig = {
   negotiation: { label: 'Negotiation', color: 'bg-indigo-500' },
   won: { label: 'Won', color: 'bg-green-500' },
   lost: { label: 'Lost', color: 'bg-red-500' },
-};
-
-const priorityConfig = {
-  low: { label: 'Low', color: 'text-slate-400' },
-  medium: { label: 'Medium', color: 'text-yellow-400' },
-  high: { label: 'High', color: 'text-red-400' },
 };
 
 export default function LeadDetailPage({ params }: { params: { id: string } }) {
@@ -129,7 +121,7 @@ export default function LeadDetailPage({ params }: { params: { id: string } }) {
   };
 
   // Generate AI insights from notes
-  const generateInsights = (notes: string | null, lead: Lead): string[] => {
+  const generateInsights = (notes: string | null): string[] => {
     if (!notes) return [];
 
     const insights: string[] = [];
@@ -262,7 +254,7 @@ export default function LeadDetailPage({ params }: { params: { id: string } }) {
                 <div className="px-4 pb-4 space-y-3">
                   {/* AI Insights */}
                   {(() => {
-                    const insights = generateInsights(lead.notes, lead);
+                    const insights = generateInsights(lead.notes);
                     if (insights.length > 0) {
                       return (
                         <div className="bg-purple-500/10 border border-purple-500/30 rounded-lg p-3">
