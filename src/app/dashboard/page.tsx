@@ -3,6 +3,7 @@ import { createClient } from '@/lib/supabase/server';
 import { Users, ArrowRight } from 'lucide-react';
 import Link from 'next/link';
 import DashboardLayout from '@/components/DashboardLayout';
+import NotificationPrompt from '@/components/NotificationPrompt';
 
 export default async function DashboardPage() {
   const supabase = await createClient();
@@ -84,6 +85,9 @@ export default async function DashboardPage() {
           </div>
         </div>
       </div>
+
+      {/* PWA Notification Prompt */}
+      <NotificationPrompt userId={user.id} />
     </DashboardLayout>
   );
 }
