@@ -75,7 +75,7 @@ export async function POST(req: NextRequest) {
     });
 
     // Use AI to determine next question
-    const systemPrompt = \`You are Jorge's AI assistant helping gather discovery information via SMS.
+    const systemPrompt = `You are Jorge's AI assistant helping gather discovery information via SMS.
 
 Ask one question at a time about:
 1. Website (Do they have one? URL?)
@@ -85,9 +85,9 @@ Ask one question at a time about:
 
 Keep messages SHORT. After all questions answered, thank them.
 
-Lead: \${lead.contact_name || 'there'}
+Lead: ${lead.contact_name || 'there'}
 
-Respond with ONLY the next SMS message (under 160 chars).\`;
+Respond with ONLY the next SMS message (under 160 chars).`;
 
     const result = await generateText({
       model: openai(models.default),
@@ -122,17 +122,17 @@ Respond with ONLY the next SMS message (under 160 chars).\`;
 
     // Update lead notes with conversation
     const conversationText = conversationHistory
-      .map(msg => \`\${msg.role === 'user' ? 'Client' : 'AI'}: \${msg.content}\`)
+      .map(msg => `${msg.role === 'user' ? 'Client' : 'AI'}: ${msg.content}`)
       .join('\n');
 
     const existingNotes = lead.notes || '';
     const smsHeader = '\n\n📱 SMS Discovery:\n';
     const updatedNotes = existingNotes.includes(smsHeader)
       ? existingNotes.replace(
-          new RegExp(\`\${smsHeader}[\\s\\S]*$\`),
-          \`\${smsHeader}\${conversationText}\`
+          new RegExp(`${smsHeader}[\\s\\S]*$`),
+          `${smsHeader}${conversationText}`
         )
-      : \`\${existingNotes}\${smsHeader}\${conversationText}\`;
+      : `${existingNotes}${smsHeader}${conversationText}`;
 
     await supabase
       .from('leads')
