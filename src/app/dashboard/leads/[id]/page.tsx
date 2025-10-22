@@ -17,6 +17,7 @@ import {
   ChevronDown,
   ChevronUp,
   Brain,
+  X,
 } from 'lucide-react';
 import type { Lead } from '@/store/useLeadsStore';
 
@@ -46,15 +47,15 @@ export default function LeadDetailPage({ params }: { params: { id: string } }) {
 
   // Accordion state - all sections start closed
   const [openSections, setOpenSections] = useState({
-    contact: false,
-    business: false,
-    timeline: false,
     notes: false,
   });
 
-  const toggleSection = (section: 'contact' | 'business' | 'timeline' | 'notes') => {
+  const toggleSection = (section: 'notes') => {
     setOpenSections(prev => ({ ...prev, [section]: !prev[section] }));
   };
+
+  // Modal state for contact info
+  const [showContactModal, setShowContactModal] = useState(false);
 
   useEffect(() => {
     fetchUser();
@@ -127,6 +128,42 @@ export default function LeadDetailPage({ params }: { params: { id: string } }) {
     }
   };
 
+  // Generate AI insights from notes
+  const generateInsights = (notes: string | null, lead: Lead): string[] => {
+    if (!notes) return [];
+
+    const insights: string[] = [];
+    const lowerNotes = notes.toLowerCase();
+
+    // Check for meeting scheduled
+    if (lowerNotes.includes('meeting scheduled') || lowerNotes.includes('call scheduled')) {
+      const dateMatch = notes.match(/\d{4}-\d{2}-\d{2}/);
+      if (dateMatch) {
+        insights.push(`📅 Meeting scheduled for ${new Date(dateMatch[0]).toLocaleDateString()}`);
+      }
+    }
+
+    // Check for specific interests
+    if (lowerNotes.includes('crm') || lowerNotes.includes('lead tracking')) {
+      insights.push('💼 Interested in CRM and lead tracking solutions');
+    }
+    if (lowerNotes.includes('automation') || lowerNotes.includes('ai')) {
+      insights.push('🤖 Looking for AI automation solutions');
+    }
+
+    // Check for pain points
+    if (lowerNotes.includes('frustrated') || lowerNotes.includes('struggling')) {
+      insights.push('⚠️ Customer experiencing pain points - follow up priority');
+    }
+
+    // Check for positive engagement
+    if (lowerNotes.includes('excited') || lowerNotes.includes('interested')) {
+      insights.push('✨ High engagement level - strong conversion potential');
+    }
+
+    return insights;
+  };
+
   if (loading) {
     return (
       <DashboardLayout userEmail={userEmail}>
@@ -149,29 +186,52 @@ export default function LeadDetailPage({ params }: { params: { id: string } }) {
 
   return (
     <DashboardLayout userEmail={userEmail}>
-      <div className="max-w-7xl mx-auto p-4 md:p-8">
+      <div className="max-w-7xl mx-auto p-3 md:p-6">
         {/* Header */}
-        <div className="mb-6">
+        <div className="mb-4">
           <button
             onClick={() => router.push('/dashboard/leads')}
-            className="flex items-center gap-2 text-slate-400 hover:text-white transition-colors mb-4"
+            className="flex items-center gap-2 text-slate-400 hover:text-white transition-colors mb-3"
           >
             <ArrowLeft className="w-4 h-4" />
             Back to Leads
           </button>
 
-          <div className="flex items-start justify-between gap-4 flex-wrap">
+          <div className="flex items-start justify-between gap-3 flex-wrap">
             <div>
-              <h1 className="text-3xl md:text-4xl font-bold text-white mb-2">
+              <h1 className="text-2xl md:text-3xl font-bold text-white mb-1">
                 {lead.company_name}
               </h1>
-              <p className="text-xl text-slate-400">{lead.contact_name}</p>
+              <div className="flex items-center gap-2">
+                <p className="text-base text-slate-400">{lead.contact_name}</p>
+                <button
+                  onClick={() => setShowContactModal(true)}
+                  className="px-2 py-1 bg-slate-700 hover:bg-slate-600 text-slate-300 text-xs rounded-md transition-colors"
+                >
+                  More Info
+                </button>
+              </div>
             </div>
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-2 flex-wrap">
+              {/* AI Sentiment Badge */}
+              {(() => {
+                const { sentiment, color, emoji } = analyzeSentiment(lead.notes);
+                const borderColor = sentiment === 'Positive' ? 'border-green-500' : sentiment === 'Negative' ? 'border-red-500' : 'border-yellow-500';
+                const bgColor = sentiment === 'Positive' ? 'bg-green-500/20' : sentiment === 'Negative' ? 'bg-red-500/20' : 'bg-yellow-500/20';
+
+                return (
+                  <span className={`px-3 py-1.5 ${bgColor} ${borderColor} border-2 text-white text-xs font-medium rounded-full flex items-center gap-1.5`}>
+                    <span>{emoji}</span>
+                    <span className={color}>{sentiment}</span>
+                  </span>
+                );
+              })()}
+
+              {/* Status Badge */}
               <span
-                className={`px-4 py-2 ${
+                className={`px-3 py-1.5 ${
                   statusConfig[lead.status].color
-                } text-white text-sm font-medium rounded-full`}
+                } text-white text-xs font-medium rounded-full`}
               >
                 {statusConfig[lead.status].label}
               </span>
@@ -179,181 +239,55 @@ export default function LeadDetailPage({ params }: { params: { id: string } }) {
           </div>
         </div>
 
-        {/* Lead Information */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
-          {/* Contact Information */}
-          <div className="bg-slate-800 rounded-lg border border-slate-700 overflow-hidden">
-            <button
-              onClick={() => toggleSection('contact')}
-              className="w-full p-6 flex items-center justify-between hover:bg-slate-750 transition-colors"
-            >
-              <h2 className="text-lg font-bold text-white flex items-center gap-2">
-                <User className="w-5 h-5" />
-                Contact Information
-              </h2>
-              {openSections.contact ? (
-                <ChevronUp className="w-5 h-5 text-slate-400" />
-              ) : (
-                <ChevronDown className="w-5 h-5 text-slate-400" />
+        {/* Lead Information - Compact Layout */}
+        <div className="space-y-3 mb-6">
+          {/* Notes with AI Insights */}
+          {lead.notes && (
+            <div className="bg-slate-800 rounded-lg border border-slate-700 overflow-hidden">
+              <button
+                onClick={() => toggleSection('notes')}
+                className="w-full p-4 flex items-center justify-between hover:bg-slate-750 transition-colors"
+              >
+                <h2 className="text-base font-bold text-white flex items-center gap-2">
+                  <Brain className="w-4 h-4 text-purple-400" />
+                  Notes & AI Insights
+                </h2>
+                {openSections.notes ? (
+                  <ChevronUp className="w-4 h-4 text-slate-400" />
+                ) : (
+                  <ChevronDown className="w-4 h-4 text-slate-400" />
+                )}
+              </button>
+              {openSections.notes && (
+                <div className="px-4 pb-4 space-y-3">
+                  {/* AI Insights */}
+                  {(() => {
+                    const insights = generateInsights(lead.notes, lead);
+                    if (insights.length > 0) {
+                      return (
+                        <div className="bg-purple-500/10 border border-purple-500/30 rounded-lg p-3">
+                          <p className="text-xs font-semibold text-purple-300 mb-2">AI Insights</p>
+                          <div className="space-y-1">
+                            {insights.map((insight, idx) => (
+                              <p key={idx} className="text-sm text-slate-300">{insight}</p>
+                            ))}
+                          </div>
+                        </div>
+                      );
+                    }
+                    return null;
+                  })()}
+
+                  {/* Raw Notes */}
+                  <div>
+                    <p className="text-xs text-slate-500 mb-2">Full Notes</p>
+                    <p className="text-sm text-slate-300 whitespace-pre-wrap">{lead.notes}</p>
+                  </div>
+                </div>
               )}
-            </button>
-            {openSections.contact && (
-              <div className="px-6 pb-6 space-y-3">
-                <div className="flex items-center gap-3">
-                  <Mail className="w-4 h-4 text-slate-400" />
-                  <div>
-                    <p className="text-xs text-slate-500">Email</p>
-                    <a
-                      href={`mailto:${lead.email}`}
-                      className="text-sm text-blue-400 hover:underline"
-                    >
-                      {lead.email}
-                    </a>
-                  </div>
-                </div>
-                {lead.phone && (
-                  <div className="flex items-center gap-3">
-                    <Phone className="w-4 h-4 text-slate-400" />
-                    <div>
-                      <p className="text-xs text-slate-500">Phone</p>
-                      <a
-                        href={`tel:${lead.phone}`}
-                        className="text-sm text-green-400 hover:underline"
-                      >
-                        {lead.phone}
-                      </a>
-                    </div>
-                  </div>
-                )}
-                {lead.location && (
-                  <div className="flex items-center gap-3">
-                    <MapPin className="w-4 h-4 text-slate-400" />
-                    <div>
-                      <p className="text-xs text-slate-500">Location</p>
-                      <p className="text-sm text-slate-300">{lead.location}</p>
-                    </div>
-                  </div>
-                )}
-              </div>
-            )}
-          </div>
-
-          {/* Business Information */}
-          <div className="bg-slate-800 rounded-lg border border-slate-700 overflow-hidden">
-            <button
-              onClick={() => toggleSection('business')}
-              className="w-full p-6 flex items-center justify-between hover:bg-slate-750 transition-colors"
-            >
-              <h2 className="text-lg font-bold text-white flex items-center gap-2">
-                <Building2 className="w-5 h-5" />
-                Business Information
-              </h2>
-              {openSections.business ? (
-                <ChevronUp className="w-5 h-5 text-slate-400" />
-              ) : (
-                <ChevronDown className="w-5 h-5 text-slate-400" />
-              )}
-            </button>
-            {openSections.business && (
-              <div className="px-6 pb-6 space-y-3">
-                <div>
-                  <p className="text-xs text-slate-500">Business Type</p>
-                  <p className="text-sm text-slate-300">{lead.business_type}</p>
-                </div>
-                <div className="flex items-center gap-3">
-                  <DollarSign className="w-4 h-4 text-slate-400" />
-                  <div>
-                    <p className="text-xs text-slate-500">Annual Revenue</p>
-                    <p className="text-sm text-slate-300">
-                      {formatCurrency(lead.annual_revenue)}
-                    </p>
-                  </div>
-                </div>
-                {lead.source && (
-                  <div>
-                    <p className="text-xs text-slate-500">Source</p>
-                    <p className="text-sm text-slate-300">{lead.source}</p>
-                  </div>
-                )}
-              </div>
-            )}
-          </div>
-
-          {/* AI Sentiment */}
-          {(() => {
-            const { sentiment, color, emoji } = analyzeSentiment(lead.notes);
-            const borderColor = sentiment === 'Positive' ? 'border-green-500' : sentiment === 'Negative' ? 'border-red-500' : 'border-yellow-500';
-            const bgColor = sentiment === 'Positive' ? 'bg-green-500/10' : sentiment === 'Negative' ? 'bg-red-500/10' : 'bg-yellow-500/10';
-
-            return (
-              <div className={`bg-slate-800 rounded-lg border-2 ${borderColor} overflow-hidden`}>
-                <button
-                  onClick={() => toggleSection('timeline')}
-                  className={`w-full p-6 flex items-center justify-between hover:bg-slate-750 transition-colors ${!openSections.timeline ? bgColor : ''}`}
-                >
-                  <div className="flex items-center gap-3">
-                    <Brain className="w-5 h-5" />
-                    <h2 className="text-lg font-bold text-white">AI Sentiment</h2>
-                    {!openSections.timeline && (
-                      <span className="flex items-center gap-2">
-                        <span className="text-xl">{emoji}</span>
-                        <span className={`text-sm font-bold ${color}`}>{sentiment}</span>
-                      </span>
-                    )}
-                  </div>
-                  {openSections.timeline ? (
-                    <ChevronUp className="w-5 h-5 text-slate-400" />
-                  ) : (
-                    <ChevronDown className="w-5 h-5 text-slate-400" />
-                  )}
-                </button>
-                {openSections.timeline && (
-                  <div className="px-6 pb-6 space-y-4">
-                    <div>
-                      <p className="text-xs text-slate-500 mb-2">Lead Sentiment Analysis</p>
-                      <div className="flex items-center gap-3">
-                        <span className="text-3xl">{emoji}</span>
-                        <span className={`text-xl font-bold ${color}`}>
-                          {sentiment}
-                        </span>
-                      </div>
-                    </div>
-                    <div className="pt-3 border-t border-slate-700">
-                      <p className="text-xs text-slate-500">Created</p>
-                      <p className="text-sm text-slate-300">{formatDate(lead.created_at)}</p>
-                    </div>
-                    <div>
-                      <p className="text-xs text-slate-500">Last Updated</p>
-                      <p className="text-sm text-slate-300">{formatDate(lead.updated_at)}</p>
-                    </div>
-                  </div>
-                )}
-              </div>
-            );
-          })()}
+            </div>
+          )}
         </div>
-
-        {/* Notes */}
-        {lead.notes && (
-          <div className="bg-slate-800 rounded-lg border border-slate-700 mb-8 overflow-hidden">
-            <button
-              onClick={() => toggleSection('notes')}
-              className="w-full p-6 flex items-center justify-between hover:bg-slate-750 transition-colors"
-            >
-              <h2 className="text-lg font-bold text-white">Notes</h2>
-              {openSections.notes ? (
-                <ChevronUp className="w-5 h-5 text-slate-400" />
-              ) : (
-                <ChevronDown className="w-5 h-5 text-slate-400" />
-              )}
-            </button>
-            {openSections.notes && (
-              <div className="px-6 pb-6">
-                <p className="text-slate-300 whitespace-pre-wrap">{lead.notes}</p>
-              </div>
-            )}
-          </div>
-        )}
 
         {/* Communication History */}
         <CommunicationHistory
@@ -362,6 +296,102 @@ export default function LeadDetailPage({ params }: { params: { id: string } }) {
           leadPhone={lead.phone}
           leadName={lead.contact_name}
         />
+
+        {/* Contact Info Modal */}
+        {showContactModal && (
+          <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4" onClick={() => setShowContactModal(false)}>
+            <div className="bg-slate-800 rounded-lg border border-slate-700 max-w-2xl w-full max-h-[80vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
+              <div className="p-4 border-b border-slate-700 flex items-center justify-between sticky top-0 bg-slate-800">
+                <h2 className="text-lg font-bold text-white flex items-center gap-2">
+                  <User className="w-5 h-5" />
+                  Contact & Business Information
+                </h2>
+                <button
+                  onClick={() => setShowContactModal(false)}
+                  className="text-slate-400 hover:text-white transition-colors"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+
+              <div className="p-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  {/* Contact Info Column */}
+                  <div className="space-y-4">
+                    <h3 className="text-sm font-semibold text-slate-400 uppercase">Contact Info</h3>
+                    <div className="flex items-center gap-3">
+                      <Mail className="w-4 h-4 text-slate-400" />
+                      <div>
+                        <p className="text-xs text-slate-500">Email</p>
+                        <a
+                          href={`mailto:${lead.email}`}
+                          className="text-sm text-blue-400 hover:underline"
+                        >
+                          {lead.email}
+                        </a>
+                      </div>
+                    </div>
+                    {lead.phone && (
+                      <div className="flex items-center gap-3">
+                        <Phone className="w-4 h-4 text-slate-400" />
+                        <div>
+                          <p className="text-xs text-slate-500">Phone</p>
+                          <a
+                            href={`tel:${lead.phone}`}
+                            className="text-sm text-green-400 hover:underline"
+                          >
+                            {lead.phone}
+                          </a>
+                        </div>
+                      </div>
+                    )}
+                    {lead.location && (
+                      <div className="flex items-center gap-3">
+                        <MapPin className="w-4 h-4 text-slate-400" />
+                        <div>
+                          <p className="text-xs text-slate-500">Location</p>
+                          <p className="text-sm text-slate-300">{lead.location}</p>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Business Info Column */}
+                  <div className="space-y-4">
+                    <h3 className="text-sm font-semibold text-slate-400 uppercase">Business Info</h3>
+                    <div>
+                      <p className="text-xs text-slate-500">Business Type</p>
+                      <p className="text-sm text-slate-300">{lead.business_type}</p>
+                    </div>
+                    <div className="flex items-center gap-3">
+                      <DollarSign className="w-4 h-4 text-slate-400" />
+                      <div>
+                        <p className="text-xs text-slate-500">Annual Revenue</p>
+                        <p className="text-sm text-slate-300">
+                          {formatCurrency(lead.annual_revenue)}
+                        </p>
+                      </div>
+                    </div>
+                    {lead.source && (
+                      <div>
+                        <p className="text-xs text-slate-500">Source</p>
+                        <p className="text-sm text-slate-300">{lead.source}</p>
+                      </div>
+                    )}
+                    <div className="pt-4 border-t border-slate-700">
+                      <p className="text-xs text-slate-500">Created</p>
+                      <p className="text-sm text-slate-300">{formatDate(lead.created_at)}</p>
+                    </div>
+                    <div>
+                      <p className="text-xs text-slate-500">Last Updated</p>
+                      <p className="text-sm text-slate-300">{formatDate(lead.updated_at)}</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </DashboardLayout>
   );
