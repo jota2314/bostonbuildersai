@@ -2,10 +2,26 @@
 
 /**
  * Check if push notifications are supported in the browser
+ * Note: iOS has limited support - requires iOS 16.4+ and PWA installation
  */
 export function isPushNotificationSupported(): boolean {
   if (typeof window === 'undefined') return false;
-  return 'serviceWorker' in navigator && 'PushManager' in window && 'Notification' in window;
+
+  // Check for basic notification support
+  const hasNotifications = 'Notification' in window;
+  const hasServiceWorker = 'serviceWorker' in navigator;
+
+  // For iOS, we relax the PushManager requirement since it may not be available
+  // but basic notifications might still work
+  const isIOS = /iPhone|iPad|iPod/.test(navigator.userAgent);
+
+  if (isIOS) {
+    // On iOS, just check for Notification API
+    return hasNotifications && hasServiceWorker;
+  }
+
+  // For other browsers, require full support
+  return hasServiceWorker && 'PushManager' in window && hasNotifications;
 }
 
 /**
@@ -31,6 +47,7 @@ export async function requestNotificationPermission(): Promise<NotificationPermi
 /**
  * Subscribe to push notifications
  * This creates a push subscription with the service worker
+ * Note: iOS has limited support and may not support PushManager
  */
 export async function subscribeToPushNotifications(userId: string): Promise<PushSubscription | null> {
   if (!isPushNotificationSupported()) {
@@ -40,6 +57,14 @@ export async function subscribeToPushNotifications(userId: string): Promise<Push
   try {
     // Wait for service worker to be ready
     const registration = await navigator.serviceWorker.ready;
+
+    // Check if PushManager is available (not available on older iOS)
+    if (!registration.pushManager) {
+      console.warn('PushManager not available - limited notification support');
+      // On iOS without PushManager, we can still use basic notifications
+      // but not push subscriptions
+      return null;
+    }
 
     // Check if already subscribed
     let subscription = await registration.pushManager.getSubscription();
@@ -62,6 +87,12 @@ export async function subscribeToPushNotifications(userId: string): Promise<Push
     return subscription;
   } catch (error) {
     console.error('Error subscribing to push notifications:', error);
+    // Don't throw on iOS - just log and continue
+    const isIOS = /iPhone|iPad|iPod/.test(navigator.userAgent);
+    if (isIOS) {
+      console.warn('iOS has limited push notification support');
+      return null;
+    }
     throw error;
   }
 }
