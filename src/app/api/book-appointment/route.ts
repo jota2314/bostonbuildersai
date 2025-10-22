@@ -67,7 +67,7 @@ export async function POST(req: NextRequest) {
       phone: phone || null,
       business_type: 'Construction/Contractor',
       source: 'Website Booking Calendar',
-      status: 'new',
+      status: 'meeting_scheduled',
       priority: 'high',
       user_id: JORGE_USER_ID,
       notes: `Meeting scheduled for ${date} at ${start_time}. Purpose: ${purpose || 'Discovery call'}`,

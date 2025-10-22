@@ -25,7 +25,8 @@ import {
 
 const statusConfig = {
   new: { label: 'New', color: 'bg-blue-500', icon: AlertCircle },
-  contacted: { label: 'Contacted', color: 'bg-purple-500', icon: Mail },
+  meeting_scheduled: { label: 'Meeting Scheduled', color: 'bg-purple-500', icon: Clock },
+  contacted: { label: 'Contacted', color: 'bg-cyan-500', icon: Mail },
   qualified: { label: 'Qualified', color: 'bg-yellow-500', icon: CheckCircle },
   proposal: { label: 'Proposal', color: 'bg-orange-500', icon: TrendingUp },
   negotiation: { label: 'Negotiation', color: 'bg-indigo-500', icon: Clock },

@@ -22,7 +22,8 @@ import type { Lead } from '@/store/useLeadsStore';
 
 const statusConfig = {
   new: { label: 'New', color: 'bg-blue-500' },
-  contacted: { label: 'Contacted', color: 'bg-purple-500' },
+  meeting_scheduled: { label: 'Meeting Scheduled', color: 'bg-purple-500' },
+  contacted: { label: 'Contacted', color: 'bg-cyan-500' },
   qualified: { label: 'Qualified', color: 'bg-yellow-500' },
   proposal: { label: 'Proposal', color: 'bg-orange-500' },
   negotiation: { label: 'Negotiation', color: 'bg-indigo-500' },
@@ -173,13 +174,6 @@ export default function LeadDetailPage({ params }: { params: { id: string } }) {
                 } text-white text-sm font-medium rounded-full`}
               >
                 {statusConfig[lead.status].label}
-              </span>
-              <span
-                className={`px-3 py-1 ${
-                  priorityConfig[lead.priority].color
-                } text-sm font-medium`}
-              >
-                {priorityConfig[lead.priority].label} Priority
               </span>
             </div>
           </div>

@@ -221,7 +221,7 @@ async function bookAppointment(args: {
     return `ERROR: Could not save appointment. Please try again.`;
   }
 
-  // Update lead notes with meeting information
+  // Update lead notes and status with meeting information
   if (leadId) {
     const meetingNote = `\nMeeting scheduled for ${args.date} at ${args.start_time}. Purpose: ${args.purpose || 'Discovery call'}`;
     const existingNotes = leadData?.notes || '';
@@ -229,9 +229,13 @@ async function bookAppointment(args: {
 
     await supabase
       .from('leads')
-      .update({ notes: updatedNotes })
+      .update({
+        notes: updatedNotes,
+        status: 'meeting_scheduled'
+      })
       .eq('id', leadId);
 
+    console.log('✅ Lead status updated to "meeting_scheduled"');
     console.log('✅ Lead notes updated with meeting schedule');
   }
 
