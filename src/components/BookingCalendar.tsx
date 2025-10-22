@@ -198,7 +198,7 @@ export default function BookingCalendar({ onClose }: BookingCalendarProps) {
             <X className="w-6 h-6" />
           </button>
           <h2 className="text-3xl font-bold mb-2">Book a Meeting with Jorge</h2>
-          <p className="text-blue-100">Let's discuss how Boston Builders AI can help grow your business</p>
+          <p className="text-blue-100">Let&apos;s discuss how Boston Builders AI can help grow your business</p>
         </div>
 
         <div className="p-8">

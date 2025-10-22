@@ -28,7 +28,6 @@ export async function GET(req: Request) {
 
     const now = new Date();
     const oneDayFromNow = new Date(now.getTime() + 24 * 60 * 60 * 1000);
-    const fifteenMinutesFromNow = new Date(now.getTime() + 15 * 60 * 1000);
 
     console.log('⏰ Checking for appointments needing reminders...');
 
@@ -76,8 +75,8 @@ export async function GET(req: Request) {
       const customerName = nameMatch?.[1]?.trim() || 'there';
 
       // Extract Meet link from metadata
-      const metadata = event.metadata as any;
-      const meetLink = metadata?.meetLink || metadata?.meet_link || 'Check your calendar';
+      const metadata = (event.metadata || {}) as Record<string, unknown>;
+      const meetLink = (metadata?.meetLink || metadata?.meet_link || 'Check your calendar') as string;
 
       // Check if we should send 1-day reminder
       if (hoursDiff >= 23.5 && hoursDiff <= 24.5) {
@@ -125,10 +124,10 @@ export async function GET(req: Request) {
           // Send 1-day reminder SMS
           if (customerPhone && customerPhone !== 'N/A') {
             try {
-              await sendSMS(
-                customerPhone,
-                `Hi ${customerName}! Reminder: Your call with Jorge is tomorrow at ${event.start_time}. Meeting link: ${meetLink}`
-              );
+              await sendSMS({
+                to: customerPhone,
+                body: `Hi ${customerName}! Reminder: Your call with Jorge is tomorrow at ${event.start_time}. Meeting link: ${meetLink}`
+              });
               console.log('✅ 1-day reminder SMS sent to:', customerPhone);
             } catch (error) {
               console.error('❌ Error sending 1-day reminder SMS:', error);
@@ -196,10 +195,10 @@ export async function GET(req: Request) {
           // Send 15-minute reminder SMS
           if (customerPhone && customerPhone !== 'N/A') {
             try {
-              await sendSMS(
-                customerPhone,
-                `Hi ${customerName}! Your call with Jorge starts in 15 minutes. Join now: ${meetLink}`
-              );
+              await sendSMS({
+                to: customerPhone,
+                body: `Hi ${customerName}! Your call with Jorge starts in 15 minutes. Join now: ${meetLink}`
+              });
               console.log('✅ 15-minute reminder SMS sent to:', customerPhone);
             } catch (error) {
               console.error('❌ Error sending 15-minute reminder SMS:', error);
