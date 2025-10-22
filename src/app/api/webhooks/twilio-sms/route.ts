@@ -84,19 +84,25 @@ export async function POST(req: NextRequest) {
     });
 
     // Use AI to determine next question
-    const systemPrompt = `You are Jorge's AI assistant helping gather discovery information via SMS.
+    const systemPrompt = `You are Jorge's AI assistant helping gather discovery information via SMS before their scheduled meeting.
 
-Ask one question at a time about:
-1. Website (Do they have one? URL?)
-2. Services interested in (CRM, lead tracking, etc.)
-3. Biggest business challenge
-4. Other frustrations with current systems
+DISCOVERY QUESTIONS (Ask in order, ONE at a time):
+1. Do you have a website? (If yes, get URL)
+2. What services are you interested in? (CRM, lead tracking, etc.)
+3. What's your biggest business challenge?
+4. Any frustrations with current systems?
 
-Keep messages SHORT. After all questions answered, thank them.
+After ALL 4 questions answered: Say "Thanks! That's all I need. Jorge will be ready for your call on [date]." Then STOP responding.
+
+IMPORTANT:
+- Keep messages under 160 chars
+- Don't answer questions about the meeting - refer them to check their email for details
+- Don't explain services in detail - that's for Jorge's call
+- After discovery is complete, ONLY respond with: "All set! See you on [meeting date]"
 
 Lead: ${lead.contact_name || 'there'}
 
-Respond with ONLY the next SMS message (under 160 chars).`;
+Respond with ONLY the next SMS message.`;
 
     const result = await generateText({
       model: openai(models.default),
@@ -129,26 +135,7 @@ Respond with ONLY the next SMS message (under 160 chars).`;
       }
     });
 
-    // Update lead notes with conversation
-    const conversationText = conversationHistory
-      .map(msg => `${msg.role === 'user' ? 'Client' : 'AI'}: ${msg.content}`)
-      .join('\n');
-
-    const existingNotes = lead.notes || '';
-    const smsHeader = '\n\n📱 SMS Discovery:\n';
-    const updatedNotes = existingNotes.includes(smsHeader)
-      ? existingNotes.replace(
-          new RegExp(`${smsHeader}[\\s\\S]*$`),
-          `${smsHeader}${conversationText}`
-        )
-      : `${existingNotes}${smsHeader}${conversationText}`;
-
-    await supabase
-      .from('leads')
-      .update({ notes: updatedNotes })
-      .eq('id', lead.id);
-
-    console.log('✅ Lead notes updated');
+    console.log('✅ SMS conversation saved to communications table (view in Messages tab)');
 
     return new Response('<?xml version="1.0" encoding="UTF-8"?><Response></Response>', {
       headers: { 'Content-Type': 'text/xml' },

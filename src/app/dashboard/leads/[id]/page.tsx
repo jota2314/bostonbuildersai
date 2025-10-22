@@ -16,6 +16,7 @@ import {
   User,
   ChevronDown,
   ChevronUp,
+  Brain,
 } from 'lucide-react';
 import type { Lead } from '@/store/useLeadsStore';
 
@@ -47,9 +48,10 @@ export default function LeadDetailPage({ params }: { params: { id: string } }) {
     contact: false,
     business: false,
     timeline: false,
+    notes: false,
   });
 
-  const toggleSection = (section: 'contact' | 'business' | 'timeline') => {
+  const toggleSection = (section: 'contact' | 'business' | 'timeline' | 'notes') => {
     setOpenSections(prev => ({ ...prev, [section]: !prev[section] }));
   };
 
@@ -100,6 +102,28 @@ export default function LeadDetailPage({ params }: { params: { id: string } }) {
       day: 'numeric',
       year: 'numeric',
     });
+  };
+
+  // Analyze sentiment from notes
+  const analyzeSentiment = (notes: string | null): { sentiment: string; color: string; emoji: string } => {
+    if (!notes) return { sentiment: 'Neutral', color: 'text-slate-400', emoji: '😐' };
+
+    const lowerNotes = notes.toLowerCase();
+
+    // Positive indicators
+    const positiveWords = ['great', 'excellent', 'good', 'interested', 'excited', 'looking forward', 'perfect', 'awesome', 'thanks', 'love'];
+    const negativeWords = ['frustrated', 'struggling', 'problem', 'difficult', 'bad', 'poor', 'issue', 'complaint', 'money', 'expensive', 'not working'];
+
+    const positiveCount = positiveWords.filter(word => lowerNotes.includes(word)).length;
+    const negativeCount = negativeWords.filter(word => lowerNotes.includes(word)).length;
+
+    if (positiveCount > negativeCount + 1) {
+      return { sentiment: 'Positive', color: 'text-green-400', emoji: '😊' };
+    } else if (negativeCount > positiveCount + 1) {
+      return { sentiment: 'Negative', color: 'text-red-400', emoji: '😟' };
+    } else {
+      return { sentiment: 'Neutral', color: 'text-yellow-400', emoji: '😐' };
+    }
   };
 
   if (loading) {
@@ -261,42 +285,79 @@ export default function LeadDetailPage({ params }: { params: { id: string } }) {
             )}
           </div>
 
-          {/* Timeline */}
-          <div className="bg-slate-800 rounded-lg border border-slate-700 overflow-hidden">
+          {/* AI Sentiment */}
+          {(() => {
+            const { sentiment, color, emoji } = analyzeSentiment(lead.notes);
+            const borderColor = sentiment === 'Positive' ? 'border-green-500' : sentiment === 'Negative' ? 'border-red-500' : 'border-yellow-500';
+            const bgColor = sentiment === 'Positive' ? 'bg-green-500/10' : sentiment === 'Negative' ? 'bg-red-500/10' : 'bg-yellow-500/10';
+
+            return (
+              <div className={`bg-slate-800 rounded-lg border-2 ${borderColor} overflow-hidden`}>
+                <button
+                  onClick={() => toggleSection('timeline')}
+                  className={`w-full p-6 flex items-center justify-between hover:bg-slate-750 transition-colors ${!openSections.timeline ? bgColor : ''}`}
+                >
+                  <div className="flex items-center gap-3">
+                    <Brain className="w-5 h-5" />
+                    <h2 className="text-lg font-bold text-white">AI Sentiment</h2>
+                    {!openSections.timeline && (
+                      <span className="flex items-center gap-2">
+                        <span className="text-xl">{emoji}</span>
+                        <span className={`text-sm font-bold ${color}`}>{sentiment}</span>
+                      </span>
+                    )}
+                  </div>
+                  {openSections.timeline ? (
+                    <ChevronUp className="w-5 h-5 text-slate-400" />
+                  ) : (
+                    <ChevronDown className="w-5 h-5 text-slate-400" />
+                  )}
+                </button>
+                {openSections.timeline && (
+                  <div className="px-6 pb-6 space-y-4">
+                    <div>
+                      <p className="text-xs text-slate-500 mb-2">Lead Sentiment Analysis</p>
+                      <div className="flex items-center gap-3">
+                        <span className="text-3xl">{emoji}</span>
+                        <span className={`text-xl font-bold ${color}`}>
+                          {sentiment}
+                        </span>
+                      </div>
+                    </div>
+                    <div className="pt-3 border-t border-slate-700">
+                      <p className="text-xs text-slate-500">Created</p>
+                      <p className="text-sm text-slate-300">{formatDate(lead.created_at)}</p>
+                    </div>
+                    <div>
+                      <p className="text-xs text-slate-500">Last Updated</p>
+                      <p className="text-sm text-slate-300">{formatDate(lead.updated_at)}</p>
+                    </div>
+                  </div>
+                )}
+              </div>
+            );
+          })()}
+        </div>
+
+        {/* Notes */}
+        {lead.notes && (
+          <div className="bg-slate-800 rounded-lg border border-slate-700 mb-8 overflow-hidden">
             <button
-              onClick={() => toggleSection('timeline')}
+              onClick={() => toggleSection('notes')}
               className="w-full p-6 flex items-center justify-between hover:bg-slate-750 transition-colors"
             >
-              <h2 className="text-lg font-bold text-white flex items-center gap-2">
-                <Calendar className="w-5 h-5" />
-                Timeline
-              </h2>
-              {openSections.timeline ? (
+              <h2 className="text-lg font-bold text-white">Notes</h2>
+              {openSections.notes ? (
                 <ChevronUp className="w-5 h-5 text-slate-400" />
               ) : (
                 <ChevronDown className="w-5 h-5 text-slate-400" />
               )}
             </button>
-            {openSections.timeline && (
-              <div className="px-6 pb-6 space-y-3">
-                <div>
-                  <p className="text-xs text-slate-500">Created</p>
-                  <p className="text-sm text-slate-300">{formatDate(lead.created_at)}</p>
-                </div>
-                <div>
-                  <p className="text-xs text-slate-500">Last Updated</p>
-                  <p className="text-sm text-slate-300">{formatDate(lead.updated_at)}</p>
-                </div>
+            {openSections.notes && (
+              <div className="px-6 pb-6">
+                <p className="text-slate-300 whitespace-pre-wrap">{lead.notes}</p>
               </div>
             )}
-          </div>
-        </div>
-
-        {/* Notes */}
-        {lead.notes && (
-          <div className="bg-slate-800 rounded-lg p-6 border border-slate-700 mb-8">
-            <h2 className="text-lg font-bold text-white mb-3">Notes</h2>
-            <p className="text-slate-300 whitespace-pre-wrap">{lead.notes}</p>
           </div>
         )}
 
