@@ -16,13 +16,13 @@ export async function POST(req: NextRequest) {
 
     const availabilityResult = await getEventsByUserAndDate(JORGE_USER_ID, date);
 
+    const events = (availabilityResult.data || []) as Array<{ start_time?: string | null; end_time?: string | null }>;
+
     console.log('📅 Database query result:', {
       success: availabilityResult.success,
       error: availabilityResult.error,
-      eventCount: availabilityResult.data?.length || 0
+      eventCount: events.length
     });
-
-    const events = (availabilityResult.data || []) as Array<{ start_time?: string | null; end_time?: string | null }>;
 
     console.log('📅 Found events:', events);
 
