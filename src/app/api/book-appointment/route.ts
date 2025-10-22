@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createCalendarEvent as createGoogleEvent } from '@/lib/google-calendar';
-import { createCalendarEvent, createLead } from '@/lib/db-operations';
+import { createCalendarEvent, createLead, saveCommunication } from '@/lib/db-operations';
 import { sendEmail } from '@/lib/resend';
 import { sendSMS } from '@/lib/twilio-sms';
 import type { CalendarEvent, LeadData } from '@/lib/types';
@@ -84,19 +84,24 @@ export async function POST(req: NextRequest) {
 
     const leadResult = await createLead(leadData);
 
+    let leadId: string | undefined;
     if (!leadResult.success) {
       console.error('❌ Error creating lead:', leadResult.error);
       console.error('❌ Full error details:', JSON.stringify(leadResult, null, 2));
       // Don't fail the whole request if lead creation fails
     } else {
       console.log('✅ Lead created successfully with ID:', leadResult.data?.id);
+      leadId = leadResult.data?.id;
     }
 
     // Send email confirmation
+    const emailSubject = `Meeting Confirmed: Call with Jorge on ${date}`;
+    const emailBody = `Hi ${name}, Your call with Jorge is confirmed for ${date} at ${start_time}. Meeting link: ${meetLink}`;
+
     try {
       await sendEmail({
         to: email,
-        subject: `Meeting Confirmed: Call with Jorge on ${date}`,
+        subject: emailSubject,
         html: `
           <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
             <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 30px; text-align: center; border-radius: 10px 10px 0 0;">
@@ -123,18 +128,48 @@ export async function POST(req: NextRequest) {
         `,
       });
       console.log('✅ Confirmation email sent to:', email);
+
+      // Save email to communications history
+      if (leadId) {
+        await saveCommunication({
+          lead_id: leadId,
+          type: 'email',
+          direction: 'outbound',
+          subject: emailSubject,
+          body: emailBody,
+          from_address: process.env.FROM_EMAIL || 'jorge@bostonbuildersai.com',
+          to_address: email,
+          status: 'sent',
+        });
+        console.log('✅ Email saved to communication history');
+      }
     } catch (error) {
       console.error('❌ Error sending email:', error);
     }
 
     // Send SMS confirmation
     if (phone) {
+      const smsBody = `Hi ${name}! Your call with Jorge is confirmed for ${date} at ${start_time}. Meeting link: ${meetLink}`;
       try {
         await sendSMS({
           to: phone,
-          body: `Hi ${name}! Your call with Jorge is confirmed for ${date} at ${start_time}. Meeting link: ${meetLink}`
+          body: smsBody
         });
         console.log('✅ Confirmation SMS sent to:', phone);
+
+        // Save SMS to communications history
+        if (leadId) {
+          await saveCommunication({
+            lead_id: leadId,
+            type: 'sms',
+            direction: 'outbound',
+            body: smsBody,
+            from_address: process.env.TWILIO_PHONE_NUMBER || '+18773695137',
+            to_address: phone,
+            status: 'sent',
+          });
+          console.log('✅ SMS saved to communication history');
+        }
       } catch (error) {
         console.error('❌ Error sending SMS:', error);
       }

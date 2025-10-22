@@ -1,5 +1,5 @@
 import { getServerSupabase } from './supabase-server';
-import type { LeadData, CalendarEvent, Todo, ChatMessage, PhoneCall, ApiResponse } from './types';
+import type { LeadData, CalendarEvent, Todo, ChatMessage, PhoneCall, Communication, ApiResponse } from './types';
 
 const supabase = getServerSupabase();
 
@@ -237,5 +237,26 @@ export async function updatePhoneCall(callSid: string, updates: Partial<PhoneCal
   } catch (error) {
     console.error('Exception in updatePhoneCall:', error);
     return { success: false, error: 'Failed to update phone call' };
+  }
+}
+
+// Communication operations
+export async function saveCommunication(communicationData: Communication): Promise<ApiResponse<{ id: string }>> {
+  try {
+    const { data, error } = await supabase
+      .from('communications')
+      .insert([communicationData])
+      .select()
+      .single();
+
+    if (error) {
+      console.error('Error saving communication:', error);
+      return { success: false, error: error.message };
+    }
+
+    return { success: true, data };
+  } catch (error) {
+    console.error('Exception in saveCommunication:', error);
+    return { success: false, error: 'Failed to save communication' };
   }
 }
