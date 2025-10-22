@@ -64,8 +64,8 @@ export async function POST(req: NextRequest) {
       .order('created_at', { ascending: true });
 
     // Build conversation context
-    const conversationHistory = (recentComms || []).map(comm => ({
-      role: comm.direction === 'outbound' ? 'assistant' : 'user',
+    const conversationHistory: Array<{ role: 'user' | 'assistant'; content: string }> = (recentComms || []).map(comm => ({
+      role: comm.direction === 'outbound' ? 'assistant' as const : 'user' as const,
       content: comm.body
     }));
 
