@@ -50,7 +50,7 @@ export async function POST(req: NextRequest) {
     const supabase = getServerSupabase();
     const fileName = `call-recordings/${callSid}-${recordingSid}.mp3`;
 
-    const { data: uploadData, error: uploadError } = await supabase.storage
+    const { error: uploadError } = await supabase.storage
       .from('call-recordings')
       .upload(fileName, audioBuffer, {
         contentType: 'audio/mpeg',

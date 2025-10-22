@@ -161,13 +161,10 @@ export default function CallInterface({
     }
   };
 
-  const toggleSpeaker = async () => {
-    if (device) {
-      const audioDevices = await device.audio?.availableOutputDevices.get();
-      // Note: Speaker toggle works better on mobile devices
-      // On desktop, this might not have visible effect
-      setIsSpeakerOn(!isSpeakerOn);
-    }
+  const toggleSpeaker = () => {
+    // Note: Speaker toggle works better on mobile devices
+    // On desktop, this might not have visible effect
+    setIsSpeakerOn(!isSpeakerOn);
   };
 
   const formatDuration = (seconds: number) => {
