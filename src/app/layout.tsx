@@ -17,6 +17,11 @@ export const metadata: Metadata = {
   title: "Boston Builders AI - Custom Software for Contractors",
   description: "AI-powered business growth platform for contractors. Get your custom operating system built in 3 weeks.",
   manifest: "/manifest.json",
+  icons: {
+    icon: "/app-icon.ico",
+    shortcut: "/app-icon.ico",
+    apple: "/logo.png",
+  },
   appleWebApp: {
     capable: true,
     statusBarStyle: "default",
