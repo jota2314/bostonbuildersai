@@ -29,7 +29,7 @@ export async function POST(req: NextRequest) {
     // Try multiple phone formats to find the lead
     const { data: leads } = await supabase
       .from('leads')
-      .select('id, contact_name, email, notes, phone')
+      .select('id, contact_name, email, notes, phone, ai_enabled')
       .order('created_at', { ascending: false });
 
     // Find lead by matching phone number (trying different formats)
@@ -62,6 +62,16 @@ export async function POST(req: NextRequest) {
         type: 'discovery_sms_reply'
       }
     });
+
+    // Check if AI auto-responses are enabled for this lead
+    if (lead.ai_enabled === false) {
+      console.log('🚫 AI auto-responses disabled for this lead, skipping AI response');
+      return new Response('<?xml version="1.0" encoding="UTF-8"?><Response></Response>', {
+        headers: { 'Content-Type': 'text/xml' },
+      });
+    }
+
+    console.log('✅ AI auto-responses enabled, generating response');
 
     // Get recent SMS conversation history
     const { data: recentComms } = await supabase

@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState, useRef } from 'react';
-import { Mail, MessageSquare, Send, Phone } from 'lucide-react';
+import { Mail, MessageSquare, Send, Phone, Bot, BotOff } from 'lucide-react';
 
 interface Communication {
   id: string;
@@ -20,6 +20,7 @@ interface CommunicationHistoryProps {
   leadEmail: string;
   leadPhone?: string | null;
   leadName: string;
+  initialAiEnabled?: boolean;
 }
 
 export default function CommunicationHistory({
@@ -27,12 +28,15 @@ export default function CommunicationHistory({
   leadEmail,
   leadPhone,
   leadName,
+  initialAiEnabled = true,
 }: CommunicationHistoryProps) {
   const [communications, setCommunications] = useState<Communication[]>([]);
   const [loading, setLoading] = useState(true);
   const [sending, setSending] = useState(false);
   const [calling, setCalling] = useState(false);
   const [messageType, setMessageType] = useState<'sms' | 'email'>(leadPhone ? 'sms' : 'email');
+  const [aiEnabled, setAiEnabled] = useState(initialAiEnabled);
+  const [togglingAi, setTogglingAi] = useState(false);
 
   // Message input
   const [messageBody, setMessageBody] = useState('');
@@ -231,14 +235,71 @@ export default function CommunicationHistory({
     }
   };
 
+  const handleToggleAi = async () => {
+    try {
+      setTogglingAi(true);
+      const newAiEnabled = !aiEnabled;
+
+      const response = await fetch(`/api/leads/${leadId}/toggle-ai`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ai_enabled: newAiEnabled }),
+      });
+
+      const result = await response.json();
+
+      if (result.success) {
+        setAiEnabled(newAiEnabled);
+      } else {
+        alert(`Failed to toggle AI: ${result.error}`);
+      }
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Unknown error';
+      alert(`Error: ${message}`);
+    } finally {
+      setTogglingAi(false);
+    }
+  };
+
   return (
     <div className="bg-slate-800 rounded-lg border border-slate-700 flex flex-col h-[600px]">
       {/* Header */}
       <div className="p-4 border-b border-slate-700 flex items-center justify-between">
-        <h3 className="text-xl font-bold text-white hidden md:block">Messages</h3>
-        <h3 className="text-lg font-bold text-white md:hidden">Chat</h3>
+        <div className="flex items-center gap-2">
+          <h3 className="text-xl font-bold text-white hidden md:block">Messages</h3>
+          <h3 className="text-lg font-bold text-white md:hidden">Chat</h3>
+
+          {/* AI Status Badge */}
+          <span
+            className={`flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium ${
+              aiEnabled
+                ? 'bg-green-500/20 text-green-400 border border-green-500/30'
+                : 'bg-slate-600/50 text-slate-400 border border-slate-600'
+            }`}
+          >
+            {aiEnabled ? <Bot className="w-3 h-3" /> : <BotOff className="w-3 h-3" />}
+            <span className="hidden md:inline">AI {aiEnabled ? 'ON' : 'OFF'}</span>
+          </span>
+        </div>
 
         <div className="flex items-center gap-2">
+          {/* AI Toggle Button */}
+          <button
+            onClick={handleToggleAi}
+            disabled={togglingAi}
+            title={aiEnabled ? 'Turn off AI auto-responses' : 'Turn on AI auto-responses'}
+            className={`flex items-center gap-2 px-3 py-2 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${
+              aiEnabled
+                ? 'bg-slate-600 hover:bg-slate-700 text-white'
+                : 'bg-green-600 hover:bg-green-700 text-white'
+            }`}
+          >
+            {aiEnabled ? <BotOff className="w-4 h-4" /> : <Bot className="w-4 h-4" />}
+            <span className="hidden md:inline">
+              {togglingAi ? 'Updating...' : aiEnabled ? 'Disable AI' : 'Enable AI'}
+            </span>
+          </button>
+
           {/* Call Button */}
           {leadPhone && (
             <button

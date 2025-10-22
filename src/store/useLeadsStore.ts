@@ -12,11 +12,12 @@ export interface Lead {
   business_type: string;
   annual_revenue: number | null;
   location: string | null;
-  status: 'new' | 'contacted' | 'qualified' | 'proposal' | 'negotiation' | 'won' | 'lost';
+  status: 'new' | 'meeting_scheduled' | 'contacted' | 'qualified' | 'proposal' | 'negotiation' | 'won' | 'lost';
   priority: 'low' | 'medium' | 'high';
   notes: string | null;
   source: string | null;
   user_id: string | null;
+  ai_enabled?: boolean;
 }
 
 interface LeadsState {

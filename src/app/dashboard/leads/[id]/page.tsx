@@ -287,6 +287,7 @@ export default function LeadDetailPage({ params }: { params: { id: string } }) {
           leadEmail={lead.email}
           leadPhone={lead.phone}
           leadName={lead.contact_name}
+          initialAiEnabled={lead.ai_enabled ?? true}
         />
 
         {/* Contact Info Modal */}
