@@ -1,11 +1,14 @@
 'use client';
 
 import { useEffect, useState, useRef } from 'react';
-import { Mail, MessageSquare, Send, Phone, Bot, BotOff } from 'lucide-react';
+import { Mail, MessageSquare, Send, Phone, Bot, BotOff, PhoneCall } from 'lucide-react';
+import dynamic from 'next/dynamic';
+
+const CallInterface = dynamic(() => import('./CallInterface'), { ssr: false });
 
 interface Communication {
   id: string;
-  type: 'email' | 'sms';
+  type: 'email' | 'sms' | 'phone';
   direction: 'inbound' | 'outbound';
   subject?: string;
   body: string;
@@ -13,6 +16,11 @@ interface Communication {
   to_address: string;
   status: string;
   created_at: string;
+  metadata?: {
+    transcript?: string;
+    recording_sid?: string;
+    call_sid?: string;
+  };
 }
 
 interface CommunicationHistoryProps {
@@ -33,7 +41,7 @@ export default function CommunicationHistory({
   const [communications, setCommunications] = useState<Communication[]>([]);
   const [loading, setLoading] = useState(true);
   const [sending, setSending] = useState(false);
-  const [calling, setCalling] = useState(false);
+  const [showCallInterface, setShowCallInterface] = useState(false);
   const [messageType, setMessageType] = useState<'sms' | 'email'>(leadPhone ? 'sms' : 'email');
   const [aiEnabled, setAiEnabled] = useState(initialAiEnabled);
   const [togglingAi, setTogglingAi] = useState(false);
@@ -196,43 +204,18 @@ export default function CommunicationHistory({
     }
   };
 
-  const handleCall = async () => {
+  const handleCall = () => {
     if (!leadPhone) {
       alert('This lead does not have a phone number');
       return;
     }
+    setShowCallInterface(true);
+  };
 
-    if (!confirm(`Call ${leadName} at ${leadPhone}?`)) {
-      return;
-    }
-
-    try {
-      setCalling(true);
-      const response = await fetch('/api/initiate-call', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          phoneNumber: leadPhone,
-          leadId,
-          leadName,
-        }),
-      });
-
-      const result = await response.json();
-
-      if (result.success) {
-        alert(`Call initiated successfully! Call SID: ${result.callSid}`);
-        // Optionally refresh communications to show the call
-        fetchCommunications();
-      } else {
-        alert(`Failed to initiate call: ${result.error}`);
-      }
-    } catch (error) {
-      const message = error instanceof Error ? error.message : 'Unknown error';
-      alert(`Error: ${message}`);
-    } finally {
-      setCalling(false);
-    }
+  const handleCallEnd = () => {
+    setShowCallInterface(false);
+    // Refresh communications to show the new call record
+    fetchCommunications();
   };
 
   const handleToggleAi = async () => {
@@ -304,12 +287,11 @@ export default function CommunicationHistory({
           {leadPhone && (
             <button
               onClick={handleCall}
-              disabled={calling}
               title="Call"
-              className="flex items-center gap-2 px-3 py-2 md:px-4 md:py-2 bg-purple-500 hover:bg-purple-600 text-white rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              className="flex items-center gap-2 px-3 py-2 md:px-4 md:py-2 bg-purple-500 hover:bg-purple-600 text-white rounded-lg transition-colors"
             >
               <Phone className="w-4 h-4" />
-              <span className="hidden md:inline">{calling ? 'Calling...' : 'Call'}</span>
+              <span className="hidden md:inline">Call</span>
             </button>
           )}
 
@@ -372,6 +354,8 @@ export default function CommunicationHistory({
                   <div className="flex items-center gap-2 mb-1">
                     {comm.type === 'email' ? (
                       <Mail className="w-3 h-3 opacity-70" />
+                    ) : comm.type === 'phone' ? (
+                      <PhoneCall className="w-3 h-3 opacity-70" />
                     ) : (
                       <MessageSquare className="w-3 h-3 opacity-70" />
                     )}
@@ -467,6 +451,16 @@ export default function CommunicationHistory({
           </p>
         )}
       </div>
+
+      {/* Call Interface Modal */}
+      {showCallInterface && leadPhone && (
+        <CallInterface
+          leadPhone={leadPhone}
+          leadName={leadName}
+          leadId={leadId}
+          onCallEnd={handleCallEnd}
+        />
+      )}
     </div>
   );
 }
