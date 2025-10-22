@@ -14,6 +14,8 @@ import {
   DollarSign,
   Calendar,
   User,
+  ChevronDown,
+  ChevronUp,
 } from 'lucide-react';
 import type { Lead } from '@/store/useLeadsStore';
 
@@ -39,6 +41,17 @@ export default function LeadDetailPage({ params }: { params: { id: string } }) {
   const [lead, setLead] = useState<Lead | null>(null);
   const [userEmail, setUserEmail] = useState<string>('');
   const [loading, setLoading] = useState(true);
+
+  // Accordion state - all sections start closed
+  const [openSections, setOpenSections] = useState({
+    contact: false,
+    business: false,
+    timeline: false,
+  });
+
+  const toggleSection = (section: 'contact' | 'business' | 'timeline') => {
+    setOpenSections(prev => ({ ...prev, [section]: !prev[section] }));
+  };
 
   useEffect(() => {
     fetchUser();
@@ -151,95 +164,131 @@ export default function LeadDetailPage({ params }: { params: { id: string } }) {
         {/* Lead Information */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
           {/* Contact Information */}
-          <div className="bg-slate-800 rounded-lg p-6 border border-slate-700">
-            <h2 className="text-lg font-bold text-white mb-4 flex items-center gap-2">
-              <User className="w-5 h-5" />
-              Contact Information
-            </h2>
-            <div className="space-y-3">
-              <div className="flex items-center gap-3">
-                <Mail className="w-4 h-4 text-slate-400" />
-                <div>
-                  <p className="text-xs text-slate-500">Email</p>
-                  <a
-                    href={`mailto:${lead.email}`}
-                    className="text-sm text-blue-400 hover:underline"
-                  >
-                    {lead.email}
-                  </a>
-                </div>
-              </div>
-              {lead.phone && (
+          <div className="bg-slate-800 rounded-lg border border-slate-700 overflow-hidden">
+            <button
+              onClick={() => toggleSection('contact')}
+              className="w-full p-6 flex items-center justify-between hover:bg-slate-750 transition-colors"
+            >
+              <h2 className="text-lg font-bold text-white flex items-center gap-2">
+                <User className="w-5 h-5" />
+                Contact Information
+              </h2>
+              {openSections.contact ? (
+                <ChevronUp className="w-5 h-5 text-slate-400" />
+              ) : (
+                <ChevronDown className="w-5 h-5 text-slate-400" />
+              )}
+            </button>
+            {openSections.contact && (
+              <div className="px-6 pb-6 space-y-3">
                 <div className="flex items-center gap-3">
-                  <Phone className="w-4 h-4 text-slate-400" />
+                  <Mail className="w-4 h-4 text-slate-400" />
                   <div>
-                    <p className="text-xs text-slate-500">Phone</p>
+                    <p className="text-xs text-slate-500">Email</p>
                     <a
-                      href={`tel:${lead.phone}`}
-                      className="text-sm text-green-400 hover:underline"
+                      href={`mailto:${lead.email}`}
+                      className="text-sm text-blue-400 hover:underline"
                     >
-                      {lead.phone}
+                      {lead.email}
                     </a>
                   </div>
                 </div>
-              )}
-              {lead.location && (
-                <div className="flex items-center gap-3">
-                  <MapPin className="w-4 h-4 text-slate-400" />
-                  <div>
-                    <p className="text-xs text-slate-500">Location</p>
-                    <p className="text-sm text-slate-300">{lead.location}</p>
+                {lead.phone && (
+                  <div className="flex items-center gap-3">
+                    <Phone className="w-4 h-4 text-slate-400" />
+                    <div>
+                      <p className="text-xs text-slate-500">Phone</p>
+                      <a
+                        href={`tel:${lead.phone}`}
+                        className="text-sm text-green-400 hover:underline"
+                      >
+                        {lead.phone}
+                      </a>
+                    </div>
                   </div>
-                </div>
-              )}
-            </div>
+                )}
+                {lead.location && (
+                  <div className="flex items-center gap-3">
+                    <MapPin className="w-4 h-4 text-slate-400" />
+                    <div>
+                      <p className="text-xs text-slate-500">Location</p>
+                      <p className="text-sm text-slate-300">{lead.location}</p>
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
           </div>
 
           {/* Business Information */}
-          <div className="bg-slate-800 rounded-lg p-6 border border-slate-700">
-            <h2 className="text-lg font-bold text-white mb-4 flex items-center gap-2">
-              <Building2 className="w-5 h-5" />
-              Business Information
-            </h2>
-            <div className="space-y-3">
-              <div>
-                <p className="text-xs text-slate-500">Business Type</p>
-                <p className="text-sm text-slate-300">{lead.business_type}</p>
-              </div>
-              <div className="flex items-center gap-3">
-                <DollarSign className="w-4 h-4 text-slate-400" />
-                <div>
-                  <p className="text-xs text-slate-500">Annual Revenue</p>
-                  <p className="text-sm text-slate-300">
-                    {formatCurrency(lead.annual_revenue)}
-                  </p>
-                </div>
-              </div>
-              {lead.source && (
-                <div>
-                  <p className="text-xs text-slate-500">Source</p>
-                  <p className="text-sm text-slate-300">{lead.source}</p>
-                </div>
+          <div className="bg-slate-800 rounded-lg border border-slate-700 overflow-hidden">
+            <button
+              onClick={() => toggleSection('business')}
+              className="w-full p-6 flex items-center justify-between hover:bg-slate-750 transition-colors"
+            >
+              <h2 className="text-lg font-bold text-white flex items-center gap-2">
+                <Building2 className="w-5 h-5" />
+                Business Information
+              </h2>
+              {openSections.business ? (
+                <ChevronUp className="w-5 h-5 text-slate-400" />
+              ) : (
+                <ChevronDown className="w-5 h-5 text-slate-400" />
               )}
-            </div>
+            </button>
+            {openSections.business && (
+              <div className="px-6 pb-6 space-y-3">
+                <div>
+                  <p className="text-xs text-slate-500">Business Type</p>
+                  <p className="text-sm text-slate-300">{lead.business_type}</p>
+                </div>
+                <div className="flex items-center gap-3">
+                  <DollarSign className="w-4 h-4 text-slate-400" />
+                  <div>
+                    <p className="text-xs text-slate-500">Annual Revenue</p>
+                    <p className="text-sm text-slate-300">
+                      {formatCurrency(lead.annual_revenue)}
+                    </p>
+                  </div>
+                </div>
+                {lead.source && (
+                  <div>
+                    <p className="text-xs text-slate-500">Source</p>
+                    <p className="text-sm text-slate-300">{lead.source}</p>
+                  </div>
+                )}
+              </div>
+            )}
           </div>
 
           {/* Timeline */}
-          <div className="bg-slate-800 rounded-lg p-6 border border-slate-700">
-            <h2 className="text-lg font-bold text-white mb-4 flex items-center gap-2">
-              <Calendar className="w-5 h-5" />
-              Timeline
-            </h2>
-            <div className="space-y-3">
-              <div>
-                <p className="text-xs text-slate-500">Created</p>
-                <p className="text-sm text-slate-300">{formatDate(lead.created_at)}</p>
+          <div className="bg-slate-800 rounded-lg border border-slate-700 overflow-hidden">
+            <button
+              onClick={() => toggleSection('timeline')}
+              className="w-full p-6 flex items-center justify-between hover:bg-slate-750 transition-colors"
+            >
+              <h2 className="text-lg font-bold text-white flex items-center gap-2">
+                <Calendar className="w-5 h-5" />
+                Timeline
+              </h2>
+              {openSections.timeline ? (
+                <ChevronUp className="w-5 h-5 text-slate-400" />
+              ) : (
+                <ChevronDown className="w-5 h-5 text-slate-400" />
+              )}
+            </button>
+            {openSections.timeline && (
+              <div className="px-6 pb-6 space-y-3">
+                <div>
+                  <p className="text-xs text-slate-500">Created</p>
+                  <p className="text-sm text-slate-300">{formatDate(lead.created_at)}</p>
+                </div>
+                <div>
+                  <p className="text-xs text-slate-500">Last Updated</p>
+                  <p className="text-sm text-slate-300">{formatDate(lead.updated_at)}</p>
+                </div>
               </div>
-              <div>
-                <p className="text-xs text-slate-500">Last Updated</p>
-                <p className="text-sm text-slate-300">{formatDate(lead.updated_at)}</p>
-              </div>
-            </div>
+            )}
           </div>
         </div>
 
