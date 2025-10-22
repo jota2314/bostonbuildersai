@@ -249,10 +249,10 @@ async function bookAppointment(args: {
   // Send SMS confirmation
   if (args.phone) {
     try {
-      await sendSMS(
-        args.phone,
-        `Hi ${args.name}! Your call with Jorge is confirmed for ${args.date} at ${args.start_time}. Meeting link: ${meetLink}`
-      );
+      await sendSMS({
+        to: args.phone,
+        body: `Hi ${args.name}! Your call with Jorge is confirmed for ${args.date} at ${args.start_time}. Meeting link: ${meetLink}`
+      });
       console.log('✅ Confirmation SMS sent to:', args.phone);
     } catch (error) {
       console.error('❌ Error sending SMS:', error);
