@@ -1,6 +1,6 @@
 'use client';
 
-import { MessageCircle, X, Send, Mic, Volume2, VolumeX } from 'lucide-react';
+import { MessageCircle, X, Send, Mic } from 'lucide-react';
 import { useState, useRef, useEffect } from 'react';
 import { useChat } from '@ai-sdk/react';
 import { isToolUIPart, getToolName, DefaultChatTransport } from 'ai';
@@ -11,11 +11,16 @@ export default function ChatWidget() {
   const [input, setInput] = useState('');
   const [showNotification, setShowNotification] = useState(false);
   const [isRecording, setIsRecording] = useState(false);
-  const [isVoiceEnabled, setIsVoiceEnabled] = useState(true);
-  const [isPlayingAudio, setIsPlayingAudio] = useState(false);
+  const [showLeadForm, setShowLeadForm] = useState(true);
+  const [isSubmittingLead, setIsSubmittingLead] = useState(false);
+  const [leadData, setLeadData] = useState({
+    name: '',
+    email: '',
+    phone: '',
+    company: ''
+  });
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const recognitionRef = useRef<SpeechRecognition | null>(null);
-  const audioRef = useRef<HTMLAudioElement | null>(null);
 
   const { messages, sendMessage, status, error } = useChat({
     transport: new DefaultChatTransport({
@@ -27,71 +32,6 @@ export default function ChatWidget() {
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
-
-  // Auto-play voice responses
-  useEffect(() => {
-    if (!isVoiceEnabled || messages.length === 0) return;
-
-    const lastMessage = messages[messages.length - 1];
-
-    // Only play voice for new assistant messages
-    if (lastMessage.role === 'assistant' && status === 'ready') {
-      // Extract text from message parts
-      const text = lastMessage.parts
-        ?.filter((part: { type: string; text?: string }) => part.type === 'text')
-        .map((part: { type: string; text?: string }) => part.text)
-        .join(' ');
-
-      if (text && text.trim()) {
-        playVoiceResponse(text);
-      }
-    }
-  }, [messages, status, isVoiceEnabled]);
-
-  const playVoiceResponse = async (text: string) => {
-    try {
-      setIsPlayingAudio(true);
-
-      // Call TTS API
-      const response = await fetch('/api/tts', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ text }),
-      });
-
-      if (!response.ok) {
-        throw new Error('TTS API error');
-      }
-
-      const audioBlob = await response.blob();
-      const audioUrl = URL.createObjectURL(audioBlob);
-
-      // Stop any currently playing audio
-      if (audioRef.current) {
-        audioRef.current.pause();
-        audioRef.current = null;
-      }
-
-      // Play the new audio
-      const audio = new Audio(audioUrl);
-      audioRef.current = audio;
-
-      audio.onended = () => {
-        setIsPlayingAudio(false);
-        URL.revokeObjectURL(audioUrl);
-      };
-
-      audio.onerror = () => {
-        setIsPlayingAudio(false);
-        URL.revokeObjectURL(audioUrl);
-      };
-
-      await audio.play();
-    } catch (error) {
-      console.error('Error playing voice response:', error);
-      setIsPlayingAudio(false);
-    }
-  };
 
   // Show notification popup after delay (if not previously dismissed)
   useEffect(() => {
@@ -174,6 +114,57 @@ export default function ChatWidget() {
     sendMessage({ text: message });
   };
 
+  const handleLeadSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+
+    // Validate required fields
+    if (!leadData.name || !leadData.email || !leadData.phone) {
+      alert('Please fill in all required fields (Name, Email, Phone)');
+      return;
+    }
+
+    setIsSubmittingLead(true);
+
+    try {
+      // Save lead to database with correct field names
+      const response = await fetch('/api/leads', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          contact_name: leadData.name,
+          company_name: leadData.company || 'Individual',
+          email: leadData.email,
+          phone: leadData.phone,
+          business_type: 'Construction/Contractor', // Default for chat leads
+          source: 'chat_widget',
+          consent_to_contact: true, // User submitted form = implicit consent
+          consent_date: new Date().toISOString(),
+          consent_ip_address: 'chat_widget', // Could get real IP if needed
+        }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        console.error('API error:', errorData);
+        throw new Error(errorData.error || 'Failed to save lead');
+      }
+
+      // Hide form and show chat
+      setShowLeadForm(false);
+
+      // Send a simple message to start the scheduling conversation
+      sendMessage({
+        text: `Hi, I'd like to schedule a meeting with Jorge. My info: ${leadData.name}, ${leadData.email}, ${leadData.phone}, ${leadData.company || 'N/A'}`
+      });
+
+    } catch (error) {
+      console.error('Error saving lead:', error);
+      alert('Oops, something went wrong. Please try again.');
+    } finally {
+      setIsSubmittingLead(false);
+    }
+  };
+
   // Render message content including tool UI parts (SDK 5)
   const renderMessageContent = (message: typeof messages[0]) => {
     if (!message.parts || message.parts.length === 0) return null;
@@ -182,6 +173,93 @@ export default function ChatWidget() {
       <div className="space-y-2">
         {message.parts.map((part, idx: number) => {
           if (part.type === 'text') {
+            // Check if this text contains date options
+            if (part.text && part.text.includes('DATEOPTIONS:')) {
+              try {
+                const parts = part.text.split('DATEOPTIONS:');
+                const beforeText = parts[0];
+                const afterParts = parts[1].split(']');
+                const jsonStr = afterParts[0] + ']';
+                const afterText = afterParts.slice(1).join(']');
+
+                const dateOptions = JSON.parse(jsonStr) as Array<{ date: string; label: string }>;
+
+                return (
+                  <div key={idx} className="space-y-2">
+                    {beforeText && <div>{beforeText.trim()}</div>}
+                    <div className="grid grid-cols-2 gap-2">
+                      {dateOptions.map((option) => (
+                        <button
+                          key={option.date}
+                          onClick={() => {
+                            if (status === 'submitted' || status === 'streaming') return;
+                            sendMessage({ text: option.date });
+                          }}
+                          disabled={status === 'submitted' || status === 'streaming'}
+                          className="bg-blue-600 hover:bg-blue-700 text-white font-medium py-3 px-4 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed text-sm"
+                        >
+                          {option.label}
+                        </button>
+                      ))}
+                    </div>
+                    {afterText && <div>{afterText.trim()}</div>}
+                  </div>
+                );
+              } catch (e) {
+                // If JSON parsing fails (incomplete stream), hide the text
+                if (status === 'streaming' && part.text.includes('DATEOPTIONS:')) {
+                  // Extract just the text before DATEOPTIONS while streaming
+                  const cleanText = part.text.split('DATEOPTIONS:')[0];
+                  return <div key={idx}>{cleanText.trim()}</div>;
+                }
+                return <div key={idx}>{part.text}</div>;
+              }
+            }
+
+            // Check if this text contains time slots
+            if (part.text && part.text.includes('TIMESLOTS:')) {
+              try {
+                // Split the message into parts: before TIMESLOTS, the JSON, and after
+                const parts = part.text.split('TIMESLOTS:');
+                const beforeText = parts[0];
+                const afterParts = parts[1].split(']');
+                const jsonStr = afterParts[0] + ']';
+                const afterText = afterParts.slice(1).join(']');
+
+                const timeSlots = JSON.parse(jsonStr) as Array<{ time: string; end: string; label: string }>;
+
+                return (
+                  <div key={idx} className="space-y-2">
+                    {beforeText && <div>{beforeText.trim()}</div>}
+                    <div className="grid grid-cols-2 gap-2">
+                      {timeSlots.map((slot) => (
+                        <button
+                          key={slot.time}
+                          onClick={() => {
+                            if (status === 'submitted' || status === 'streaming') return;
+                            sendMessage({ text: `${slot.label}` });
+                          }}
+                          disabled={status === 'submitted' || status === 'streaming'}
+                          className="bg-primary hover:bg-primary-dark text-white font-medium py-3 px-4 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed text-sm"
+                        >
+                          {slot.label}
+                        </button>
+                      ))}
+                    </div>
+                    {afterText && <div>{afterText.trim()}</div>}
+                  </div>
+                );
+              } catch (e) {
+                // If JSON parsing fails (incomplete stream), hide the text
+                if (status === 'streaming' && part.text.includes('TIMESLOTS:')) {
+                  // Extract just the text before TIMESLOTS while streaming
+                  const cleanText = part.text.split('TIMESLOTS:')[0];
+                  return <div key={idx}>{cleanText.trim()}</div>;
+                }
+                return <div key={idx}>{part.text}</div>;
+              }
+            }
+
             return <div key={idx}>{part.text}</div>;
           }
 
@@ -254,53 +332,81 @@ export default function ChatWidget() {
               <h3 className="text-white font-bold">Book a Call with Jorge</h3>
               <p className="text-white/80 text-xs">Usually responds in seconds</p>
             </div>
-            <div className="flex items-center gap-2">
-              {isPlayingAudio && (
-                <span className="text-white text-xs animate-pulse">🔊 Speaking...</span>
-              )}
-              <button
-                onClick={() => setIsVoiceEnabled(!isVoiceEnabled)}
-                className="text-white hover:bg-primary-dark rounded p-1 transition-colors"
-                title={isVoiceEnabled ? 'Mute voice' : 'Enable voice'}
-              >
-                {isVoiceEnabled ? <Volume2 className="w-5 h-5" /> : <VolumeX className="w-5 h-5" />}
-              </button>
-              <button
-                onClick={() => setIsOpen(false)}
-                className="text-white hover:bg-primary-dark rounded p-1 transition-colors"
-              >
-                <X className="w-5 h-5" />
-              </button>
-            </div>
+            <button
+              onClick={() => setIsOpen(false)}
+              className="text-white hover:bg-primary-dark rounded p-1 transition-colors"
+            >
+              <X className="w-5 h-5" />
+            </button>
           </div>
 
           <div className="flex-1 overflow-y-auto p-4 space-y-4">
-            {/* Initial welcome message with quick replies */}
-            {messages.length === 0 && (
+            {/* Lead capture form - shown first */}
+            {showLeadForm && (
               <div className="space-y-4 animate-fadeIn">
                 <div className="flex justify-start">
                   <div className="max-w-[85%] rounded-lg p-4 bg-slate-700 text-slate-100">
-                    <p className="mb-1">👋 Hey! I can help you schedule a meeting with Jorge or answer any questions about our services.</p>
-                    <p className="text-sm text-slate-300 mt-2">How can I help you today?</p>
+                    <p className="mb-1">👋 Hey! Let&apos;s get started.</p>
+                    <p className="text-sm text-slate-300 mt-2">Please share your contact info so we can help you better:</p>
                   </div>
                 </div>
-                <div className="flex flex-col gap-2 pl-2 animate-slideIn">
-                  <QuickReplyButton
-                    text="Schedule a Meeting"
-                    icon="📅"
-                    onClick={() => handleQuickReply('I want to schedule a meeting with Jorge')}
-                  />
-                  <QuickReplyButton
-                    text="Ask a Question"
-                    icon="💬"
-                    onClick={() => handleQuickReply('I have a question about your services')}
-                  />
-                  <QuickReplyButton
-                    text="See Pricing"
-                    icon="💰"
-                    onClick={() => handleQuickReply('I want to know about pricing')}
-                  />
-                </div>
+
+                <form onSubmit={handleLeadSubmit} className="space-y-3 bg-slate-700/50 p-4 rounded-lg">
+                  <div>
+                    <label className="block text-slate-300 text-sm mb-1">Name *</label>
+                    <input
+                      type="text"
+                      value={leadData.name}
+                      onChange={(e) => setLeadData({ ...leadData, name: e.target.value })}
+                      placeholder="John Doe"
+                      required
+                      className="w-full bg-slate-800 text-white rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-slate-300 text-sm mb-1">Email *</label>
+                    <input
+                      type="email"
+                      value={leadData.email}
+                      onChange={(e) => setLeadData({ ...leadData, email: e.target.value })}
+                      placeholder="john@example.com"
+                      required
+                      className="w-full bg-slate-800 text-white rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-slate-300 text-sm mb-1">Phone *</label>
+                    <input
+                      type="tel"
+                      value={leadData.phone}
+                      onChange={(e) => setLeadData({ ...leadData, phone: e.target.value })}
+                      placeholder="(617) 555-0123"
+                      required
+                      className="w-full bg-slate-800 text-white rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-slate-300 text-sm mb-1">Company Name</label>
+                    <input
+                      type="text"
+                      value={leadData.company}
+                      onChange={(e) => setLeadData({ ...leadData, company: e.target.value })}
+                      placeholder="Your Company (optional)"
+                      className="w-full bg-slate-800 text-white rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+                    />
+                  </div>
+
+                  <button
+                    type="submit"
+                    disabled={isSubmittingLead}
+                    className="w-full bg-primary hover:bg-primary-dark text-white font-medium py-2.5 px-4 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {isSubmittingLead ? 'Starting chat...' : 'Start Chat'}
+                  </button>
+                </form>
               </div>
             )}
 
@@ -341,6 +447,8 @@ export default function ChatWidget() {
             <div ref={messagesEndRef} />
           </div>
 
+          {/* Chat input - only show after lead form is submitted */}
+          {!showLeadForm && (
           <div className="p-4 border-t border-slate-700">
             {isRecording && (
               <div className="mb-2 text-center">
@@ -366,18 +474,19 @@ export default function ChatWidget() {
                 value={input}
                 onChange={(e) => setInput(e.target.value)}
                 placeholder="Type or speak your message..."
-                disabled={status === 'submitted' || status === 'streaming'}
+                disabled={status === 'submitted' || status === 'streaming' || isRecording}
                 className="flex-1 bg-slate-700 text-white rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-primary disabled:opacity-50"
               />
               <button
                 type="submit"
-                disabled={status === 'submitted' || status === 'streaming'}
+                disabled={status === 'submitted' || status === 'streaming' || isRecording}
                 className="bg-primary hover:bg-primary-dark text-white rounded-lg px-4 py-2 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 <Send className="w-5 h-5" />
               </button>
             </form>
           </div>
+          )}
         </div>
       )}
     </>

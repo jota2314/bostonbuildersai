@@ -1,123 +1,158 @@
-import { openai, models } from '@/lib/ai/provider';
-import { streamText, tool, convertToModelMessages } from 'ai';
-import { z } from 'zod';
-import { createCalendarEvent } from '@/lib/db-operations';
-import type { CalendarEvent } from '@/lib/types';
+import { NextRequest, NextResponse } from 'next/server';
+import { createCalendarEvent as createGoogleEvent } from '@/lib/google-calendar';
+import { createCalendarEvent, createLead } from '@/lib/db-operations';
+import { sendEmail } from '@/lib/resend';
+import { sendSMS } from '@/lib/twilio-sms';
+import type { CalendarEvent, LeadData } from '@/lib/types';
 
-export const runtime = 'edge';
-// Request validation
-const MessagePartSchema = z.object({
-  type: z.string().optional(),
-  text: z.string().optional(),
-});
+const JORGE_USER_ID = 'b01606c2-dcb3-4566-826f-f1d7453d84ce';
 
-const MessageSchema = z.object({
-  id: z.string().optional(),
-  role: z.enum(['user', 'assistant', 'system']),
-  content: z.string().optional(),
-  parts: z.array(MessagePartSchema).optional(),
-});
+export async function POST(req: NextRequest) {
+  try {
+    const { name, email, phone, company, date, start_time, end_time, purpose } = await req.json();
 
-const BookAppointmentRequestSchema = z.object({
-  messages: z.array(MessageSchema).min(1),
-  ownerId: z.string(),
-});
+    if (!name || !email || !date || !start_time || !end_time) {
+      return NextResponse.json(
+        { error: 'Missing required fields' },
+        { status: 400 }
+      );
+    }
 
-interface AppointmentData {
-  visitor_name: string;
-  visitor_email: string;
-  visitor_phone?: string;
-  date: string;
-  start_time: string;
-  end_time: string;
-  purpose: string;
-}
+    console.log('📞 Booking appointment for:', name);
 
-async function createAppointment(appointmentData: AppointmentData, ownerId: string) {
-  const eventData: CalendarEvent = {
-    title: `Appointment: ${appointmentData.visitor_name}`,
-    description: `${appointmentData.purpose}\n\nContact: ${appointmentData.visitor_email}\nPhone: ${appointmentData.visitor_phone || 'N/A'}`,
-    event_date: appointmentData.date,
-    start_time: appointmentData.start_time,
-    end_time: appointmentData.end_time,
-    user_id: ownerId,
-  };
+    // Create Google Calendar event
+    const startDateTime = `${date}T${start_time}:00`;
+    const endDateTime = `${date}T${end_time}:00`;
 
-  return await createCalendarEvent(eventData);
-}
+    const googleResult = await createGoogleEvent({
+      summary: `Call with ${name}`,
+      description: `📋 Lead Info:\nName: ${name}\nCompany: ${company || 'N/A'}\nEmail: ${email}\nPhone: ${phone || 'N/A'}\nPurpose: ${purpose || 'Discovery call'}\n\n👉 Please add Google Meet link to this event`,
+      startDateTime,
+      endDateTime,
+      attendeeEmail: email,
+      attendeeName: name,
+    });
 
-export async function POST(req: Request) {
-  const { messages: rawMessages, ownerId } = BookAppointmentRequestSchema.parse(await req.json());
-  // Use timezone-safe date formatting
-  const now = new Date();
-  const today = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+    if (!googleResult.success) {
+      console.error('❌ Error creating Google Calendar event:', googleResult.error);
+    }
 
-  // Clean messages: remove tool-related parts that convertToModelMessages can't handle
-  const messages = rawMessages
-    .filter((msg) => msg.role === 'user' || msg.role === 'assistant')
-    .map((msg) => {
-      if (msg.role === 'user') return msg;
-      if (msg.role === 'assistant' && msg.parts) {
-        const cleanParts = msg.parts.filter((part) => part.type === 'text');
-        if (cleanParts.length > 0) {
-          return { ...msg, parts: cleanParts };
-        }
+    const meetLink = googleResult.meetLink || process.env.STATIC_MEET_LINK || 'https://meet.google.com/emq-intn-ckr';
+
+    // Save to local database
+    const eventData: CalendarEvent = {
+      title: `Call with ${name}`,
+      description: `Company: ${company || 'N/A'}\nEmail: ${email}\nPhone: ${phone || 'N/A'}\nPurpose: ${purpose || 'Discovery call'}\nMeet Link: ${meetLink}\nGoogle Event ID: ${googleResult.eventId || 'N/A'}`,
+      event_date: date,
+      start_time,
+      end_time,
+      user_id: JORGE_USER_ID,
+    };
+
+    const dbResult = await createCalendarEvent(eventData);
+
+    if (!dbResult.success) {
+      console.error('❌ Error saving to database:', dbResult.error);
+      return NextResponse.json(
+        { error: 'Could not save appointment' },
+        { status: 500 }
+      );
+    }
+
+    // Create lead entry
+    const leadData: LeadData = {
+      company_name: company || 'N/A',
+      contact_name: name,
+      email,
+      phone: phone || null,
+      business_type: 'Construction/Contractor',
+      source: 'Website Booking Calendar',
+      status: 'new',
+      priority: 'high',
+      user_id: JORGE_USER_ID,
+      notes: `Meeting scheduled for ${date} at ${start_time}. Purpose: ${purpose || 'Discovery call'}`,
+      consent_to_contact: true,
+      consent_date: new Date().toISOString(),
+    };
+
+    console.log('📝 Creating lead with data:', {
+      company_name: leadData.company_name,
+      contact_name: leadData.contact_name,
+      email: leadData.email,
+      user_id: leadData.user_id
+    });
+
+    const leadResult = await createLead(leadData);
+
+    if (!leadResult.success) {
+      console.error('❌ Error creating lead:', leadResult.error);
+      console.error('❌ Full error details:', JSON.stringify(leadResult, null, 2));
+      // Don't fail the whole request if lead creation fails
+    } else {
+      console.log('✅ Lead created successfully with ID:', leadResult.data?.id);
+    }
+
+    // Send email confirmation
+    try {
+      await sendEmail({
+        to: email,
+        subject: `Meeting Confirmed: Call with Jorge on ${date}`,
+        html: `
+          <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+            <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 30px; text-align: center; border-radius: 10px 10px 0 0;">
+              <h1 style="color: white; margin: 0;">Meeting Confirmed! 📅</h1>
+            </div>
+
+            <div style="background: #f7fafc; padding: 30px; border-radius: 0 0 10px 10px;">
+              <p style="font-size: 16px; color: #2d3748;">Hi ${name},</p>
+
+              <p style="font-size: 16px; color: #2d3748;">Your call with Jorge is all set!</p>
+
+              <div style="background: white; padding: 20px; border-radius: 8px; margin: 20px 0; border-left: 4px solid #667eea;">
+                <p style="margin: 5px 0; color: #2d3748;"><strong>📅 Date:</strong> ${date}</p>
+                <p style="margin: 5px 0; color: #2d3748;"><strong>🕐 Time:</strong> ${start_time}</p>
+                <p style="margin: 5px 0; color: #2d3748;"><strong>📹 Meeting Link:</strong></p>
+                <a href="${meetLink}" style="color: #667eea; word-break: break-all;">${meetLink}</a>
+              </div>
+
+              <p style="font-size: 14px; color: #718096; margin-top: 20px;">
+                We'll send you a reminder 1 day before and 15 minutes before the meeting.
+              </p>
+            </div>
+          </div>
+        `,
+      });
+      console.log('✅ Confirmation email sent to:', email);
+    } catch (error) {
+      console.error('❌ Error sending email:', error);
+    }
+
+    // Send SMS confirmation
+    if (phone) {
+      try {
+        await sendSMS({
+          to: phone,
+          body: `Hi ${name}! Your call with Jorge is confirmed for ${date} at ${start_time}. Meeting link: ${meetLink}`
+        });
+        console.log('✅ Confirmation SMS sent to:', phone);
+      } catch (error) {
+        console.error('❌ Error sending SMS:', error);
       }
-      return null;
-    })
-    .filter((msg) => msg !== null);
+    }
 
-  const result = streamText({
-    model: openai(models.fast),
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    messages: convertToModelMessages(messages as any),
-    system: `You are a friendly appointment booking assistant for Jorge at Boston Builders AI.
+    console.log('✅ Appointment booked successfully');
 
-Your role:
-1. Greet visitors warmly and ask what they'd like to discuss
-2. Collect their name, email, and phone number (optional)
-3. Ask what date and time they prefer for the appointment
-4. Confirm all details with them
-5. Use book_appointment to schedule it
-6. Provide a confirmation message with all appointment details
-
-Important guidelines:
-- Today's date is ${today}
-- Be conversational and friendly
-- Confirm all details before booking
-- Mention that Jorge will send a calendar invite to their email
-- Typical appointment duration is 30-60 minutes
-- Standard business hours: 9 AM to 5 PM weekdays
-
-Example conversation flow:
-1. "Hi! I'm Jorge's scheduling assistant. What would you like to discuss?"
-2. "Great! Can I get your name and email?"
-3. "What date and time works best for you?"
-4. "Perfect! Let me confirm: [summarize]. Should I book this?"
-5. *Book appointment*
-6. "All set! You're scheduled for [details]. Jorge will send you a calendar invite shortly."
-
-Always be helpful and professional!`,
-    tools: {
-      book_appointment: tool({
-        description: 'Book an appointment after confirming details with the visitor',
-        inputSchema: z.object({
-          visitor_name: z.string().describe('Full name of the visitor'),
-          visitor_email: z.string().email().describe('Email of the visitor'),
-          visitor_phone: z.string().optional().describe('Phone number of the visitor (optional)'),
-          date: z.string().describe('Appointment date in YYYY-MM-DD format'),
-          start_time: z.string().describe('Start time in HH:MM format (24-hour)'),
-          end_time: z.string().describe('End time in HH:MM format (24-hour)'),
-          purpose: z.string().describe('Purpose or topic of the appointment'),
-        }),
-        execute: async (args) => {
-          return await createAppointment(args, ownerId);
-        },
-      }),
-    },
-    maxOutputTokens: 1000,
-    temperature: 0.7,
-  });
-
-  return result.toUIMessageStreamResponse();
+    return NextResponse.json({
+      success: true,
+      message: 'Appointment booked successfully',
+      eventId: dbResult.data?.id,
+      meetLink
+    });
+  } catch (error) {
+    console.error('❌ Error booking appointment:', error);
+    return NextResponse.json(
+      { error: 'Failed to book appointment' },
+      { status: 500 }
+    );
+  }
 }

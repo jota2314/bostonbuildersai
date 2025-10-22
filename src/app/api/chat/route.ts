@@ -9,6 +9,9 @@ import {
   saveChatMessage
 } from '@/lib/db-operations';
 import type { LeadData, CalendarEvent } from '@/lib/types';
+import { createCalendarEvent as createGoogleEvent } from '@/lib/google-calendar';
+import { sendEmail } from '@/lib/resend';
+import { sendSMS } from '@/lib/twilio-sms';
 
 // Request validation
 const MessagePartSchema = z.object({
@@ -27,8 +30,9 @@ const ChatRequestSchema = z.object({
   messages: z.array(MessageSchema).min(1),
 });
 
-export const runtime = 'edge';
+// Removed edge runtime to support googleapis library
 export const dynamic = 'force-dynamic';
+export const maxDuration = 60; // Allow up to 60 seconds for API calls
 
 // Generate a session ID from the first user message or use a timestamp
 function getSessionId(messages: Array<{ id?: string }>): string {
@@ -127,22 +131,27 @@ async function checkAvailability(args: {
     }
   }
 
-  const availableSlots = slots.slice(0, 5);
+  const availableSlots = slots.slice(0, 4); // Show 3-4 time slots
   console.log(`✅ Found ${availableSlots.length} slots for ${args.date}`);
 
   if (availableSlots.length === 0) {
     return `No available slots on ${args.date}. Please try another date.`;
   }
 
-  // Format slots with labels
-  const formattedSlots = availableSlots.map((slot) => {
+  // Format slots with labels and return structured data for UI
+  const slotsData = availableSlots.map((slot) => {
     const hour = parseInt(slot.start.split(':')[0]);
     const ampm = hour >= 12 ? 'PM' : 'AM';
     const displayHour = hour > 12 ? hour - 12 : (hour === 0 ? 12 : hour);
-    return `${displayHour} ${ampm}`;
+    return {
+      time: slot.start,
+      end: slot.end,
+      label: `${displayHour} ${ampm}`
+    };
   });
 
-  const message = `Available times: ${formattedSlots.join(', ')}`;
+  // Return in a format that the UI can parse and render as clickable buttons
+  const message = `TIMESLOTS:${JSON.stringify(slotsData)}`;
   console.log('📨 Returning to AI:', message);
 
   return message;
@@ -161,24 +170,97 @@ async function bookAppointment(args: {
 }) {
   console.log('📞 Booking appointment for:', args.name);
 
+  // Create Google Calendar event with Meet link FIRST
+  const startDateTime = `${args.date}T${args.start_time}:00`;
+  const endDateTime = `${args.date}T${args.end_time}:00`;
+
+  const googleResult = await createGoogleEvent({
+    summary: `Call with ${args.name}`,
+    description: `📋 Lead Info:\nName: ${args.name}\nCompany: ${args.company || 'N/A'}\nEmail: ${args.email}\nPhone: ${args.phone || 'N/A'}\nPurpose: ${args.purpose || 'Discovery call'}\n\n👉 Please add Google Meet link to this event`,
+    startDateTime,
+    endDateTime,
+    attendeeEmail: args.email,
+    attendeeName: args.name,
+  });
+
+  if (!googleResult.success) {
+    console.error('❌ Error creating Google Calendar event:', googleResult.error);
+  }
+
+  const meetLink = googleResult.meetLink || 'Will be sent separately';
+
+  // Save to local database
   const eventData: CalendarEvent = {
     title: `Call with ${args.name}`,
-    description: `Company: ${args.company || 'N/A'}\nEmail: ${args.email}\nPhone: ${args.phone || 'N/A'}\nPurpose: ${args.purpose || 'Discovery call'}`,
+    description: `Company: ${args.company || 'N/A'}\nEmail: ${args.email}\nPhone: ${args.phone || 'N/A'}\nPurpose: ${args.purpose || 'Discovery call'}\nMeet Link: ${meetLink}\nGoogle Event ID: ${googleResult.eventId || 'N/A'}`,
     event_date: args.date,
     start_time: args.start_time,
     end_time: args.end_time,
     user_id: JORGE_USER_ID,
   };
 
-  const result = await createCalendarEvent(eventData);
+  const dbResult = await createCalendarEvent(eventData);
 
-  if (!result.success) {
-    console.error('❌ Error booking:', result.error);
-    return result;
+  if (!dbResult.success) {
+    console.error('❌ Error saving to database:', dbResult.error);
+    return `ERROR: Could not save appointment. Please try again.`;
   }
 
-  console.log('✅ Appointment booked');
-  return `Successfully booked! Your call with Jorge is scheduled for ${args.date} at ${args.start_time}.`;
+  // Send email confirmation
+  try {
+    await sendEmail({
+      to: args.email,
+      subject: `Meeting Confirmed: Call with Jorge on ${args.date}`,
+      html: `
+        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+          <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 30px; text-align: center; border-radius: 10px 10px 0 0;">
+            <h1 style="color: white; margin: 0;">Meeting Confirmed! 📅</h1>
+          </div>
+
+          <div style="background: #f7fafc; padding: 30px; border-radius: 0 0 10px 10px;">
+            <p style="font-size: 16px; color: #2d3748;">Hi ${args.name},</p>
+
+            <p style="font-size: 16px; color: #2d3748;">Your call with Jorge is all set!</p>
+
+            <div style="background: white; padding: 20px; border-radius: 8px; margin: 20px 0; border-left: 4px solid #667eea;">
+              <p style="margin: 5px 0; color: #2d3748;"><strong>📅 Date:</strong> ${args.date}</p>
+              <p style="margin: 5px 0; color: #2d3748;"><strong>🕐 Time:</strong> ${args.start_time}</p>
+              <p style="margin: 5px 0; color: #2d3748;"><strong>📹 Meeting Link:</strong></p>
+              <a href="${meetLink}" style="color: #667eea; word-break: break-all;">${meetLink}</a>
+            </div>
+
+            <p style="font-size: 14px; color: #718096; margin-top: 20px;">
+              We'll send you a reminder 1 day before and 15 minutes before the meeting.
+            </p>
+
+            <p style="font-size: 14px; color: #718096; margin-top: 20px;">
+              Looking forward to talking with you!<br>
+              <strong>- Jorge & The Boston Builders AI Team</strong>
+            </p>
+          </div>
+        </div>
+      `,
+    });
+    console.log('✅ Confirmation email sent to:', args.email);
+  } catch (error) {
+    console.error('❌ Error sending email:', error);
+  }
+
+  // Send SMS confirmation
+  if (args.phone) {
+    try {
+      await sendSMS(
+        args.phone,
+        `Hi ${args.name}! Your call with Jorge is confirmed for ${args.date} at ${args.start_time}. Meeting link: ${meetLink}`
+      );
+      console.log('✅ Confirmation SMS sent to:', args.phone);
+    } catch (error) {
+      console.error('❌ Error sending SMS:', error);
+    }
+  }
+
+  console.log('✅ Appointment booked with Google Meet link');
+  return `You're all set! Your call with Jorge is scheduled for ${args.date} at ${args.start_time}. Check your email for the Google Meet link and calendar invite.`;
 }
 
 // Get current date for the AI
@@ -247,16 +329,39 @@ If they ask about services, features, pricing, Jorge's background, or how it wor
 - Be patient - answer as many questions as they need
 
 WHEN READY TO BOOK (They say "schedule", "book", "meeting", or you sense interest):
+
+IMPORTANT: If the user's first message includes their contact info (name, email, phone), that means they ALREADY filled out a form and their lead is ALREADY SAVED. DO NOT ask for their info again or call save_lead. Skip directly to scheduling.
+
+IF they already provided their info (e.g. "I want to schedule. My info: John Smith, john@email.com, 555-1234, ABC Corp"):
+1. Extract their name from the message
+2. Skip directly to: "Perfect! What day works best for you?"
+3. They give date → check_availability → show times → they choose → book_appointment with extracted info from their original message
+
+IF they did NOT provide info yet:
 1. Get their name: "Great! What's your name?"
-2. Get company: "Awesome, [name]! What company are you with?"
-3. Get business type: "Nice! What type of work does [company] do?" (roofing, HVAC, etc.)
-4. Get phone number: "What's the best number to reach you at?"
-5. Get email: "And what's the best email to send the calendar invite to?"
-6. ASK FOR CONSENT: "Got it! By booking this call, you agree to receive calls and texts from us about your inquiry. Sound good?"
-7. They agree (yes/okay/sure/agreed) → call save_lead tool with consent_to_contact=true
-8. After save_lead succeeds → ASK: "Perfect! What day works best for you to talk with Jorge?"
-9. They give a date → call check_availability tool → PRESENT TIMES: "I've got [time slots]. Which one works for you?"
-10. They choose time → call book_appointment → CONFIRM: "You're all set! Jorge is looking forward to talking with you on [date] at [time]."
+2. Get company: "Awesome! What company are you with?"
+3. Get business type: "Nice! What type of work does your company do?"
+4. Get phone number: "What's the best number to reach you?"
+5. Get email: "And email for the calendar invite?"
+6. ASK FOR CONSENT: "By booking, you agree to receive calls and texts. Sound good?"
+7. They agree → call save_lead with consent_to_contact=true
+8. After save_lead → Ask: "Perfect! What day works for you?"
+
+EITHER WAY, finish with:
+9. When asking for the date, respond with: "Perfect! What day works best for you? DATEOPTIONS:[{"date":"YYYY-MM-DD","label":"Today"},{"date":"YYYY-MM-DD","label":"Tomorrow"},{"date":"YYYY-MM-DD","label":"DayOfWeek"}]"
+
+   CRITICAL DATE CALCULATION: Today is ${dateStr}. Calculate dates carefully:
+   - Today = ${dateStr}
+   - Tomorrow = add 1 day to ${dateStr}
+   - Day after tomorrow = add 2 days to ${dateStr}
+   - etc.
+   Use these EXACT dates in DATEOPTIONS. The label should match the date (e.g., if tomorrow is Thursday, label should be "Tomorrow (Thu)").
+
+10. Date given → check_availability → IMPORTANT: When check_availability returns times, include the EXACT output (including "TIMESLOTS:..." if present) in your response to the user. The UI will render these as clickable buttons.
+11. They choose time → book_appointment → confirm booking
+
+CRITICAL: When asking "What day works best for you?", you MUST include DATEOPTIONS with the next 5-6 days. Calculate dates by adding days to ${dateStr}.
+CRITICAL: When presenting available times from check_availability, you MUST include the raw output verbatim in your message. For example: "Great! TIMESLOTS:[...]" - this allows the UI to show clickable time buttons.
 
 ===== ANSWERING COMMON QUESTIONS =====
 
@@ -304,7 +409,7 @@ Remember: You're not just booking calls - you're building relationships. Help fi
 
 const tools = {
   save_lead: tool({
-    description: 'Save the lead information to the database. IMPORTANT: Only call this after the user has given consent to be contacted (agreed to receive calls/texts). After calling this tool, ask the user what day they prefer for a call.',
+    description: 'Save the lead information to the database. CRITICAL: DO NOT call this if the user already provided their contact info in their first message (that means they filled a form and are already saved). Only call this when collecting info during conversation AND after the user has given consent to be contacted. After calling this tool, ask the user what day they prefer for a call.',
     inputSchema: z.object({
       contact_name: z.string(),
       email: z.string().email(),

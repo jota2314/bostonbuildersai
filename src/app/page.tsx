@@ -25,6 +25,7 @@ import {
 } from 'lucide-react';
 import ChatWidget from '@/components/ChatWidget';
 import LeadForm from '@/components/LeadForm';
+import BookingCalendar from '@/components/BookingCalendar';
 
 interface FAQItemProps {
   question: string;
@@ -58,6 +59,7 @@ const FAQItem = ({ question, answer }: FAQItemProps) => {
 
 export default function Home() {
   const [showLeadForm, setShowLeadForm] = useState(false);
+  const [showBookingCalendar, setShowBookingCalendar] = useState(false);
 
   return (
     <div className="min-h-screen bg-slate-900">
@@ -76,10 +78,10 @@ export default function Home() {
             </div>
             <div className="flex items-center space-x-4">
               <button
-                onClick={() => setShowLeadForm(true)}
+                onClick={() => setShowBookingCalendar(true)}
                 className="px-10 py-4 bg-primary hover:bg-primary-dark text-white font-bold rounded-lg transition-colors text-xl"
               >
-                Apply Now
+                Book a Meeting
               </button>
             </div>
           </div>
@@ -816,10 +818,10 @@ export default function Home() {
               </ul>
 
               <button
-                onClick={() => setShowLeadForm(true)}
+                onClick={() => setShowBookingCalendar(true)}
                 className="block w-full text-center px-8 py-4 bg-primary hover:bg-primary-dark text-white font-bold rounded-lg transition-colors"
               >
-                Apply Now
+                Book a Meeting
               </button>
             </div>
 
@@ -993,6 +995,13 @@ export default function Home() {
 
       {/* AI Chat Widget */}
       <ChatWidget />
+
+      {/* Booking Calendar Modal */}
+      {showBookingCalendar && (
+        <BookingCalendar
+          onClose={() => setShowBookingCalendar(false)}
+        />
+      )}
 
       {/* Lead Form Modal */}
       {showLeadForm && (
