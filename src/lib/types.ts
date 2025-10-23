@@ -77,13 +77,13 @@ export interface PhoneCall {
 // Communication types
 export interface Communication {
   lead_id: string;
-  type: 'email' | 'sms';
+  type: 'email' | 'sms' | 'phone';
   direction: 'inbound' | 'outbound';
   subject?: string | null;
   body: string;
   from_address: string;
   to_address: string;
-  status?: 'sent' | 'delivered' | 'failed' | 'read' | 'bounced';
+  status?: 'sent' | 'delivered' | 'failed' | 'read' | 'bounced' | 'completed';
   provider_id?: string | null;
   metadata?: Record<string, unknown>;
   error_message?: string | null;
