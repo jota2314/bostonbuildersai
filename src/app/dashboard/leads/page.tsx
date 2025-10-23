@@ -328,7 +328,7 @@ export default function LeadsPage() {
                   {/* Notes */}
                   {lead.notes && (
                     <div className="bg-slate-900 rounded p-3 mb-4">
-                      <p className="text-slate-400 text-xs mb-1 font-semibold">Notes:</p>
+                      <p className="text-slate-400 text-xs mb-1 font-semibold">AI Insights:</p>
                       <p className="text-slate-300 text-sm whitespace-pre-wrap max-h-[100px] overflow-y-auto">
                         {lead.notes}
                       </p>
