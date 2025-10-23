@@ -24,7 +24,8 @@ ${conversationHistory.map((msg: { direction: string; body: string }) =>
   `${msg.direction === 'inbound' ? leadName : 'Jorge'}: ${msg.body}`
 ).join('\n')}
 
-Return ONLY a JSON array of 3 strings, like: ["suggestion 1", "suggestion 2", "suggestion 3"]`;
+IMPORTANT: Return ONLY a raw JSON array. Do NOT use markdown code blocks. Do NOT use backticks. Just the array.
+Example format: ["suggestion 1", "suggestion 2", "suggestion 3"]`;
 
       userPrompt = `Generate 3 professional response suggestions for ${leadName}.`;
 
@@ -69,22 +70,36 @@ Maintain the original intent but elevate the tone. Return ONLY the rewritten tex
     if (action === 'suggest') {
       // Parse JSON array for suggestions
       try {
-        const suggestions = JSON.parse(result.text.trim());
-        if (Array.isArray(suggestions)) {
-          responseData = { success: true, suggestions };
+        // Clean up the response - remove markdown code blocks if present
+        let cleanedText = result.text.trim();
+
+        // Remove ```json and ``` markers
+        cleanedText = cleanedText.replace(/^```json\s*/i, '').replace(/```\s*$/, '');
+        cleanedText = cleanedText.replace(/^```\s*/, '').replace(/```\s*$/, '');
+        cleanedText = cleanedText.trim();
+
+        const suggestions = JSON.parse(cleanedText);
+        if (Array.isArray(suggestions) && suggestions.length > 0) {
+          responseData = { success: true, suggestions: suggestions.slice(0, 3) };
         } else {
-          // Fallback: split by newlines if not valid JSON
-          responseData = {
-            success: true,
-            suggestions: result.text.split('\n').filter(s => s.trim()).slice(0, 3)
-          };
+          // Fallback: split by newlines if not valid array
+          const lines = result.text
+            .split('\n')
+            .map(l => l.trim())
+            .filter(l => l && !l.startsWith('```') && !l.startsWith('[') && !l.startsWith(']'))
+            .slice(0, 3);
+
+          responseData = { success: true, suggestions: lines.length > 0 ? lines : ['Error generating suggestions'] };
         }
       } catch {
-        // Fallback: split by newlines
-        responseData = {
-          success: true,
-          suggestions: result.text.split('\n').filter(s => s.trim()).slice(0, 3)
-        };
+        // Fallback: split by newlines and clean up
+        const lines = result.text
+          .split('\n')
+          .map(l => l.trim())
+          .filter(l => l && !l.startsWith('```') && !l.startsWith('[') && !l.startsWith(']') && !l.startsWith('"'))
+          .slice(0, 3);
+
+        responseData = { success: true, suggestions: lines.length > 0 ? lines : ['Error generating suggestions'] };
       }
     } else {
       // For improve/professional, return single text
