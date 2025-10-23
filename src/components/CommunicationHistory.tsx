@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState, useRef } from 'react';
-import { Mail, MessageSquare, Send, Phone, Bot, BotOff, PhoneCall } from 'lucide-react';
+import { Mail, MessageSquare, Send, Phone, Bot, BotOff, PhoneCall, Sparkles, Wand2, Lightbulb } from 'lucide-react';
 import dynamic from 'next/dynamic';
 
 const CallInterface = dynamic(() => import('./CallInterface'), { ssr: false });
@@ -50,6 +50,11 @@ export default function CommunicationHistory({
   const [messageBody, setMessageBody] = useState('');
   const [emailSubject, setEmailSubject] = useState('');
   const [showSubject, setShowSubject] = useState(false);
+
+  // AI Writing Assistant
+  const [showAiAssistant, setShowAiAssistant] = useState(false);
+  const [aiSuggestions, setAiSuggestions] = useState<string[]>([]);
+  const [loadingAi, setLoadingAi] = useState(false);
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
@@ -244,6 +249,48 @@ export default function CommunicationHistory({
     }
   };
 
+  const getAiSuggestions = async (action: 'suggest' | 'improve' | 'professional') => {
+    try {
+      setLoadingAi(true);
+      setShowAiAssistant(true);
+
+      const response = await fetch('/api/ai/writing-assistant', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action,
+          draft: messageBody,
+          messageType,
+          leadName,
+          conversationHistory: communications.slice(-5).map(c => ({
+            direction: c.direction,
+            body: c.body,
+            type: c.type
+          }))
+        }),
+      });
+
+      const result = await response.json();
+
+      if (result.success) {
+        setAiSuggestions(result.suggestions || [result.text]);
+      } else {
+        alert(`Failed to get AI suggestions: ${result.error}`);
+      }
+    } catch (error) {
+      console.error('Error getting AI suggestions:', error);
+      alert('Failed to get AI suggestions');
+    } finally {
+      setLoadingAi(false);
+    }
+  };
+
+  const useSuggestion = (suggestion: string) => {
+    setMessageBody(suggestion);
+    setShowAiAssistant(false);
+    setAiSuggestions([]);
+  };
+
   return (
     <div className="bg-slate-800 rounded-lg border border-slate-700 flex flex-col h-[600px]">
       {/* Header */}
@@ -394,6 +441,71 @@ export default function CommunicationHistory({
 
       {/* Input Area */}
       <div className="p-4 border-t border-slate-700 space-y-2">
+        {/* AI Writing Assistant Buttons */}
+        <div className="flex items-center gap-2 flex-wrap">
+          <button
+            onClick={() => getAiSuggestions('suggest')}
+            disabled={loadingAi}
+            className="flex items-center gap-1.5 px-3 py-1.5 bg-purple-500/20 hover:bg-purple-500/30 text-purple-300 rounded-lg transition-colors text-xs disabled:opacity-50"
+            title="Get AI response suggestions"
+          >
+            <Sparkles className="w-3.5 h-3.5" />
+            <span>AI Suggest</span>
+          </button>
+          <button
+            onClick={() => getAiSuggestions('improve')}
+            disabled={loadingAi || !messageBody.trim()}
+            className="flex items-center gap-1.5 px-3 py-1.5 bg-blue-500/20 hover:bg-blue-500/30 text-blue-300 rounded-lg transition-colors text-xs disabled:opacity-50"
+            title="Improve your draft"
+          >
+            <Wand2 className="w-3.5 h-3.5" />
+            <span>Improve</span>
+          </button>
+          <button
+            onClick={() => getAiSuggestions('professional')}
+            disabled={loadingAi || !messageBody.trim()}
+            className="flex items-center gap-1.5 px-3 py-1.5 bg-indigo-500/20 hover:bg-indigo-500/30 text-indigo-300 rounded-lg transition-colors text-xs disabled:opacity-50"
+            title="Make it professional"
+          >
+            <Lightbulb className="w-3.5 h-3.5" />
+            <span>Professional</span>
+          </button>
+          {loadingAi && (
+            <span className="text-xs text-slate-400 flex items-center gap-1">
+              <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-purple-400"></div>
+              Thinking...
+            </span>
+          )}
+        </div>
+
+        {/* AI Suggestions Panel */}
+        {showAiAssistant && aiSuggestions.length > 0 && (
+          <div className="bg-slate-700/50 rounded-lg p-3 space-y-2 border border-slate-600">
+            <div className="flex items-center justify-between mb-2">
+              <p className="text-xs font-semibold text-purple-300">AI Suggestions:</p>
+              <button
+                onClick={() => {
+                  setShowAiAssistant(false);
+                  setAiSuggestions([]);
+                }}
+                className="text-slate-400 hover:text-white text-xs"
+              >
+                Close
+              </button>
+            </div>
+            {aiSuggestions.map((suggestion, idx) => (
+              <div
+                key={idx}
+                className="bg-slate-800 rounded p-3 cursor-pointer hover:bg-slate-750 transition-colors border border-slate-600 hover:border-purple-500"
+                onClick={() => useSuggestion(suggestion)}
+              >
+                <p className="text-sm text-slate-300">{suggestion}</p>
+                <p className="text-xs text-purple-400 mt-1">Click to use</p>
+              </div>
+            ))}
+          </div>
+        )}
+
         {/* Email Subject Field (optional) */}
         {messageType === 'email' && (
           <>
