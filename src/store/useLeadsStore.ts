@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import { createClient } from '@/lib/supabase/client';
+import { determineLeadPriority } from '@/lib/ai-utils';
 
 export interface Lead {
   id: string;
@@ -87,14 +88,18 @@ export const useLeadsStore = create<LeadsState>((set, get) => ({
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error('User not authenticated');
 
+      // Use AI to determine priority if not explicitly set
+      const status = lead.status || 'new';
+      const priority = lead.priority || determineLeadPriority(lead.notes || null, status);
+
       const { data, error } = await supabase
         .from('leads')
         .insert([
           {
             ...lead,
             user_id: user.id,
-            status: lead.status || 'new',
-            priority: lead.priority || 'medium',
+            status,
+            priority,
           },
         ])
         .select()

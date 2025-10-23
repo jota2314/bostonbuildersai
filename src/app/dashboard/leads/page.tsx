@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
 import DashboardLayout from '@/components/DashboardLayout';
 import { useLeadsStore, type Lead } from '@/store/useLeadsStore';
+import { generateInsights } from '@/lib/ai-utils';
 import {
   Plus,
   Search,
@@ -38,42 +39,6 @@ const priorityConfig = {
   low: { color: 'text-slate-400', bg: 'bg-slate-500/10' },
   medium: { color: 'text-yellow-400', bg: 'bg-yellow-500/10' },
   high: { color: 'text-red-400', bg: 'bg-red-500/10' },
-};
-
-// Generate AI insights from notes
-const generateInsights = (notes: string | null): string[] => {
-  if (!notes) return [];
-
-  const insights: string[] = [];
-  const lowerNotes = notes.toLowerCase();
-
-  // Check for meeting scheduled
-  if (lowerNotes.includes('meeting scheduled') || lowerNotes.includes('call scheduled')) {
-    const dateMatch = notes.match(/\d{4}-\d{2}-\d{2}/);
-    if (dateMatch) {
-      insights.push(`📅 Meeting scheduled for ${new Date(dateMatch[0]).toLocaleDateString()}`);
-    }
-  }
-
-  // Check for specific interests
-  if (lowerNotes.includes('crm') || lowerNotes.includes('lead tracking')) {
-    insights.push('💼 Interested in CRM and lead tracking solutions');
-  }
-  if (lowerNotes.includes('automation') || lowerNotes.includes('ai')) {
-    insights.push('🤖 Looking for AI automation solutions');
-  }
-
-  // Check for pain points
-  if (lowerNotes.includes('frustrated') || lowerNotes.includes('struggling')) {
-    insights.push('⚠️ Customer experiencing pain points - follow up priority');
-  }
-
-  // Check for positive engagement
-  if (lowerNotes.includes('excited') || lowerNotes.includes('interested')) {
-    insights.push('✨ High engagement level - strong conversion potential');
-  }
-
-  return insights;
 };
 
 export default function LeadsPage() {

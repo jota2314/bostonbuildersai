@@ -1,14 +1,18 @@
 import { getServerSupabase } from './supabase-server';
 import type { LeadData, CalendarEvent, Todo, ChatMessage, PhoneCall, Communication, ApiResponse } from './types';
+import { determineLeadPriority } from './ai-utils';
 
 const supabase = getServerSupabase();
 
 // Lead operations
 export async function createLead(leadData: LeadData): Promise<ApiResponse<{ id: string }>> {
   try {
+    // Use AI to determine priority if not explicitly set
+    const priority = leadData.priority || determineLeadPriority(leadData.notes || null, leadData.status);
+
     const { data, error } = await supabase
       .from('leads')
-      .insert([leadData])
+      .insert([{ ...leadData, priority }])
       .select()
       .single();
 

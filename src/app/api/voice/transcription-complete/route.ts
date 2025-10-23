@@ -3,6 +3,7 @@ import { getServerSupabase } from '@/lib/supabase-server';
 import { saveCommunication } from '@/lib/db-operations';
 import { openai, models } from '@/lib/ai/provider';
 import { generateText } from 'ai';
+import { determineLeadPriority } from '@/lib/ai-utils';
 
 export async function POST(req: NextRequest) {
   try {
@@ -97,6 +98,33 @@ Keep it under 200 words. Focus on actionable insights.`;
         summary,
       })
       .eq('call_sid', callSid);
+
+    // Update lead's notes and priority based on AI analysis
+    const { data: lead } = await supabase
+      .from('leads')
+      .select('notes, status')
+      .eq('id', phoneCall.lead_id)
+      .single();
+
+    if (lead) {
+      // Append summary to existing notes
+      const updatedNotes = lead.notes
+        ? `${lead.notes}\n\n📞 Discovery Call Notes:\nStatus: Will follow up via SMS\n\n${summary}`
+        : `📞 Discovery Call Notes:\nStatus: Will follow up via SMS\n\n${summary}`;
+
+      // Use AI to determine new priority
+      const newPriority = determineLeadPriority(updatedNotes, lead.status);
+
+      await supabase
+        .from('leads')
+        .update({
+          notes: updatedNotes,
+          priority: newPriority,
+        })
+        .eq('id', phoneCall.lead_id);
+
+      console.log('✅ Lead notes and priority updated with AI analysis');
+    }
 
     return NextResponse.json({ success: true });
   } catch (error) {
