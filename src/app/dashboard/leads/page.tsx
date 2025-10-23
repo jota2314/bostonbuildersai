@@ -40,6 +40,42 @@ const priorityConfig = {
   high: { color: 'text-red-400', bg: 'bg-red-500/10' },
 };
 
+// Generate AI insights from notes
+const generateInsights = (notes: string | null): string[] => {
+  if (!notes) return [];
+
+  const insights: string[] = [];
+  const lowerNotes = notes.toLowerCase();
+
+  // Check for meeting scheduled
+  if (lowerNotes.includes('meeting scheduled') || lowerNotes.includes('call scheduled')) {
+    const dateMatch = notes.match(/\d{4}-\d{2}-\d{2}/);
+    if (dateMatch) {
+      insights.push(`📅 Meeting scheduled for ${new Date(dateMatch[0]).toLocaleDateString()}`);
+    }
+  }
+
+  // Check for specific interests
+  if (lowerNotes.includes('crm') || lowerNotes.includes('lead tracking')) {
+    insights.push('💼 Interested in CRM and lead tracking solutions');
+  }
+  if (lowerNotes.includes('automation') || lowerNotes.includes('ai')) {
+    insights.push('🤖 Looking for AI automation solutions');
+  }
+
+  // Check for pain points
+  if (lowerNotes.includes('frustrated') || lowerNotes.includes('struggling')) {
+    insights.push('⚠️ Customer experiencing pain points - follow up priority');
+  }
+
+  // Check for positive engagement
+  if (lowerNotes.includes('excited') || lowerNotes.includes('interested')) {
+    insights.push('✨ High engagement level - strong conversion potential');
+  }
+
+  return insights;
+};
+
 export default function LeadsPage() {
   const router = useRouter();
 
@@ -325,15 +361,23 @@ export default function LeadsPage() {
                     )}
                   </div>
 
-                  {/* Notes */}
-                  {lead.notes && (
-                    <div className="bg-slate-900 rounded p-3 mb-4">
-                      <p className="text-slate-400 text-xs mb-1 font-semibold">AI Insights:</p>
-                      <p className="text-slate-300 text-sm whitespace-pre-wrap max-h-[100px] overflow-y-auto">
-                        {lead.notes}
-                      </p>
-                    </div>
-                  )}
+                  {/* AI Insights */}
+                  {(() => {
+                    const insights = generateInsights(lead.notes);
+                    if (insights.length > 0) {
+                      return (
+                        <div className="bg-slate-900 rounded p-3 mb-4">
+                          <p className="text-slate-400 text-xs mb-1 font-semibold">AI Insights:</p>
+                          <div className="space-y-1">
+                            {insights.map((insight, idx) => (
+                              <p key={idx} className="text-slate-300 text-sm">{insight}</p>
+                            ))}
+                          </div>
+                        </div>
+                      );
+                    }
+                    return null;
+                  })()}
 
                   {/* Footer */}
                   <div className="flex items-center justify-between pt-4 border-t border-slate-700">
