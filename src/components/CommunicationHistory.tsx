@@ -285,7 +285,7 @@ export default function CommunicationHistory({
     }
   };
 
-  const useSuggestion = (suggestion: string) => {
+  const applySuggestion = (suggestion: string) => {
     setMessageBody(suggestion);
     setShowAiAssistant(false);
     setAiSuggestions([]);
@@ -497,7 +497,7 @@ export default function CommunicationHistory({
               <div
                 key={idx}
                 className="bg-slate-800 rounded p-3 cursor-pointer hover:bg-slate-750 transition-colors border border-slate-600 hover:border-purple-500"
-                onClick={() => useSuggestion(suggestion)}
+                onClick={() => applySuggestion(suggestion)}
               >
                 <p className="text-sm text-slate-300">{suggestion}</p>
                 <p className="text-xs text-purple-400 mt-1">Click to use</p>
